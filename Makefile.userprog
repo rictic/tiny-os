@@ -40,7 +40,7 @@ $(foreach prog,$(PROGS),$(eval $(call TEMPLATE,$(prog))))
 libc.a: $(LIB_OBJ)
 	rm -f $@
 	ar r $@ $^
-	ranlib $@
+	i386-elf-ranlib $@
 
 clean::
 	rm -f $(PROGS) $(PROGS_OBJ) $(PROGS_DEP)
