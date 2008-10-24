@@ -13,7 +13,8 @@ static void halt (void){}
   the process's parent waits for it (see below), this is the status that 
   will be returned. Conventionally, a status of 0 indicates success and 
   nonzero values indicate errors. */
-static void exit (int status) {}
+static void exit (int status) {
+}
 
 /* Runs the executable whose name is given in cmd_line, passing any 
   given arguments, and returns the new process's program id (pid).
@@ -28,8 +29,7 @@ static int exec (const char *cmd_line) {}
  successfully called for the given pid, returns -1 immediately, 
  without waiting. */
 static int wait (int pid){
-  //initially an infinite loop
-  while(true);
+  return process_wait(pid);
 }
 
 /* Creates a new file called file initially initial_size bytes in size.
@@ -84,9 +84,26 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!\n");
+  int *args = f->esp; args++;
+  int sys_call = *((int *)f->esp);
+  switch (sys_call){
+    case SYS_HALT    : printf("SYS_HALT    \n"); halt(); break;
+    case SYS_EXIT    : printf("SYS_EXIT    \n"); exit(*args); break;
+    case SYS_EXEC    : printf("SYS_EXEC    \n"); break;
+    case SYS_WAIT    : printf("SYS_WAIT    \n"); break; 
+    case SYS_CREATE  : printf("SYS_CREATE  \n"); break; 
+    case SYS_REMOVE  : printf("SYS_REMOVE  \n"); break; 
+    case SYS_OPEN    : printf("SYS_OPEN    \n"); break;
+    case SYS_FILESIZE: printf("SYS_FILESIZE\n"); break;
+    case SYS_READ    : printf("SYS_READ    \n"); break;
+    case SYS_WRITE   : printf("SYS_WRITE   \n"); break; 
+    case SYS_SEEK    : printf("SYS_SEEK    \n"); break; 
+    case SYS_TELL    : printf("SYS_TELL    \n"); break; 
+    case SYS_CLOSE   : printf("SYS_CLOSE   \n"); break;
+    default: printf("Unknown system call\n");
+  }
   
   thread_exit ();
 }
