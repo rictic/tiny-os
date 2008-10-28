@@ -172,7 +172,71 @@ syscall_handler (struct intr_frame *f)
   f->eax=return_val;
 }
 
+/* Validate reading memory */
+static void 
+validate_read (char *buffer, unsigned size)
+{
+	int count = 0;
+	int result;
+	
+	if (buffer + size > PHYS_BASE)
+		thread_exit ();
+	else
+	{
+		for (count = 0; count <= size, count ++)
+		{
+			result = get_user (buffer + count);
+			if (result == -1)
+			{
+				thread_exit ();
+				break;
+			}	
+		}
+	}
+}
 
+/* Validate writing memory */
+static void 
+validate_write (uint8_t byte, void *buffer, unsigned size)
+{
+	int count;
+	int result;
+	
+	if (buffer + size > PHYS_BASE)
+		thread_exit ();
+	else
+	{
+		for (count = 0; count <= size, count ++)
+		{
+			if (!put_user (buffer, byte))
+			{
+				thread_exit ();
+				break;
+			}	
+		}
+	}	
+}
 
-
-
+/* Reads a byte at user virtual address UADDR.
+   UADDR must be below PHYS_BASE.
+   Returns the byte value if successful, -1 if a segfault
+   occurred. */
+static int
+get_user (const uint8_t *uaddr)
+{
+  int result;
+  asm ("movl $1f, %0; movzbl %1, %0; 1:"
+       : "=&a" (result) : "m" (*uaddr));
+  return result;
+}
+/* Writes BYTE to user address UDST.
+   UDST must be below PHYS_BASE.
+   Returns true if successful, false if a segfault occurred. */
+static bool
+put_user (uint8_t *udst, uint8_t byte)
+{
+  int error_code;
+  asm ("movl $1f, %0; movb %b2, %1; 1:"
+       : "=&a" (error_code), "=m" (*udst) : "r" (byte));
+  return error_code != -1;
+}

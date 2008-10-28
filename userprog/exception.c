@@ -156,6 +156,14 @@ page_fault (struct intr_frame *f)
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
-  kill (f);
+  switch (f->cs)
+	{
+	case SEL_KCSEG:
+		f->eip = f->eax;
+		f->eax = -1;
+		break;
+	default:
+		  kill (f);	
+	}
 }
 
