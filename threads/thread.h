@@ -5,6 +5,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#define NUM_FD 128
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -96,6 +98,8 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
+
+    struct file *(files[NUM_FD]);          /* File descriptor table */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
