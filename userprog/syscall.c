@@ -3,24 +3,28 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/init.h"
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
  deadlock situations, etc.  */
-static void halt (void){}
+static void halt (void) {
+  power_off ();
+}
 
 /* Terminates the current user program, returning status to the kernel. If 
   the process's parent waits for it (see below), this is the status that 
   will be returned. Conventionally, a status of 0 indicates success and 
   nonzero values indicate errors. */
 static void exit (int status) {
+  thread_exit ();
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any 
   given arguments, and returns the new process's program id (pid).
   Must return pid -1, which otherwise should not be a valid pid, 
   if the program cannot load or run for any reason. */
-static int exec (const char *cmd_line) {}
+// static int exec (const char *cmd_line) {}
 
 /* If process pid is still alive, waits until it dies. Then, returns
  the status that pid passed to exit, or -1 if pid was terminated by 
@@ -34,45 +38,52 @@ static int wait (int pid){
 
 /* Creates a new file called file initially initial_size bytes in size.
  Returns true if successful, false otherwise. */
-static bool create (const char *file, unsigned initial_size){
-  return false;
-}
+// static bool create (const char *file, unsigned initial_size){
+//   return false;
+// }
 
 /* Deletes the file called file. Returns true if successful, false otherwise.*/ 
-static bool remove (const char *file){
-  return false;
-}
+// static bool remove (const char *file){
+//   return false;
+// }
 
 /* Opens the file called file. Returns a nonnegative integer handle called a 
   "file descriptor" (fd), or -1 if the file could not be opened. */
-static int open (const char *file){}
+// static int open (const char *file){}
 
 /* Returns the size, in bytes, of the file open as fd. */
-static int filesize (int fd){}
+// static int filesize (int fd){}
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of
  bytes actually read (0 at end of file), or -1 if the file could not be read 
  (due to a condition other than end of file). Fd 0 reads from the keyboard 
  using input_getc(). */
-static int read (int fd, void *buffer, unsigned size){}
+// static int read (int fd, void *buffer, unsigned size){}
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
   bytes actually written, or -1 if the file could not be written. */
-static int write (int fd, const void *buffer, unsigned size){}
+static int write (int fd, const void *buffer, unsigned size){
+  if (fd == 1){
+//     printf("printing buffer '%s' of size %u\n",buffer);
+    putbuf(buffer, size);
+    return size;
+  }
+  return 0;
+}
 
 /* Changes the next byte to be read or written in open file fd to position, 
   expressed in bytes from the beginning of the file. (Thus, a position of 
   0 is the file's start.) */
-static void seek (int fd, unsigned position){}
+// static void seek (int fd, unsigned position){}
 
 /* Returns the position of the next byte to be read or written in open file 
   fd, expressed in bytes from the beginning of the file. */
-static unsigned tell (int fd){}
+// static unsigned tell (int fd){}
 
 /* Closes file descriptor fd. Exiting or terminating a process implicitly 
   closes all its open file descriptors, as if by calling this function 
   for each one. */
-static void close (int fd){}
+// static void close (int fd){}
 
 
 static void syscall_handler (struct intr_frame *);
@@ -88,24 +99,30 @@ syscall_handler (struct intr_frame *f)
 {
   int *args = f->esp; args++;
   int sys_call = *((int *)f->esp);
+  int return_val;
   switch (sys_call){
-    case SYS_HALT    : printf("SYS_HALT    \n"); halt(); break;
-    case SYS_EXIT    : printf("SYS_EXIT    \n"); exit(*args); break;
-    case SYS_EXEC    : printf("SYS_EXEC    \n"); break;
-    case SYS_WAIT    : printf("SYS_WAIT    \n"); break; 
-    case SYS_CREATE  : printf("SYS_CREATE  \n"); break; 
-    case SYS_REMOVE  : printf("SYS_REMOVE  \n"); break; 
-    case SYS_OPEN    : printf("SYS_OPEN    \n"); break;
-    case SYS_FILESIZE: printf("SYS_FILESIZE\n"); break;
-    case SYS_READ    : printf("SYS_READ    \n"); break;
-    case SYS_WRITE   : printf("SYS_WRITE   \n"); break; 
-    case SYS_SEEK    : printf("SYS_SEEK    \n"); break; 
-    case SYS_TELL    : printf("SYS_TELL    \n"); break; 
-    case SYS_CLOSE   : printf("SYS_CLOSE   \n"); break;
-    default: printf("Unknown system call\n");
+    case SYS_HALT    : printf ("SYS_HALT    \n"); halt (); return;
+    case SYS_EXIT    : printf ("SYS_EXIT    \n"); exit (args[0]); return;
+    case SYS_EXEC    : printf ("SYS_EXEC    \n"); break;
+    case SYS_WAIT    : printf ("SYS_WAIT    \n"); 
+                       return_val = wait (args[0]);
+                       break; 
+    case SYS_CREATE  : printf ("SYS_CREATE  \n"); break; 
+    case SYS_REMOVE  : printf ("SYS_REMOVE  \n"); break; 
+    case SYS_OPEN    : printf ("SYS_OPEN    \n"); break;
+    case SYS_FILESIZE: printf ("SYS_FILESIZE\n"); break;
+    case SYS_READ    : printf ("SYS_READ    \n"); break;
+    case SYS_WRITE   : printf ("SYS_WRITE   \n"); 
+                       return_val = write(args[0], args[1], args[2]);
+                       break;
+    case SYS_SEEK    : printf ("SYS_SEEK    \n"); break; 
+    case SYS_TELL    : printf ("SYS_TELL    \n"); break; 
+    case SYS_CLOSE   : printf ("SYS_CLOSE   \n"); break;
+    default: printf ("Unknown system call\n");
   }
   
-  thread_exit ();
+  //"return" the value back where it's expected
+  f->eax=return_val;
 }
 
 
