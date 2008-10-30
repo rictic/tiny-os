@@ -47,28 +47,33 @@ static int wait (int pid){
 /* Creates a new file called file initially initial_size bytes in size.
  Returns true if successful, false otherwise. */
 static bool create (const char *file, unsigned initial_size){
+  if (file == NULL) return false;
   return filesys_create (file, initial_size);
 }
 
 /* Deletes the file called file. Returns true if successful, false otherwise.*/ 
 static bool remove (const char *file){
+  if (file == NULL) return false;
   return filesys_remove (file);
 }
 
 /* Opens the file called file. Returns a nonnegative integer handle called a 
   "file descriptor" (fd), or -1 if the file could not be opened. */
 static int open (const char *file){
+  if (file == NULL) return -1;
+  
   //find an open place in our fd table
-  struct file *file = fdtable;
+  struct file *table = fdtable;
   int fd;
   for (fd = 2; fd < NUM_FD; fd++)
-    if (fdtable[fd] == NULL)
+    if (table[fd] == NULL)
       break;
     
   if (fd == NUM_FD)
     return -1;
   
-  fdtable[fd] = filesys_open (file);
+  table[fd] = filesys_open (file);
+  if (table[fd] == NULL) return -1;
   return fd;
 }
 
@@ -80,6 +85,7 @@ static int open (const char *file){
  (due to a condition other than end of file). Fd 0 reads from the keyboard 
  using input_getc(). */
 static int read (int fd, void *buffer, unsigned size){
+  if (buffer == NULL) return -1;
   if (fd == 1)
     return -1;
 
