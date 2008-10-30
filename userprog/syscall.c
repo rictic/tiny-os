@@ -63,10 +63,10 @@ static int open (const char *file){
   if (file == NULL) return -1;
   
   //find an open place in our fd table
-  struct file *table = fdtable;
+  struct file **table = fdtable;
   int fd;
   for (fd = 2; fd < NUM_FD; fd++)
-    if (table[fd] == NULL)
+    if (*(table+fd) == NULL)
       break;
     
   if (fd == NUM_FD)
