@@ -1,0 +1,13 @@
+# -*- makefile -*-
+
+# Test names.
+tests/threads_TESTS = $(addprefix tests/threads/, \
+	vtrr_1_1 vtrr_10_10 vtrr_100_100 \
+	vtrr_1_1_1 vtrr_10_10_10 vtrr_100_100_100 \
+	vtrr_6_4 vtrr_7_3 vtrr_8_2 vtrr_9_1 \
+	vtrr_7_2_1 vtrr_9_8_7_6_5_4_3_2_1 )
+
+# Sources for tests.
+tests/threads_SRC  = tests/threads/tests.c
+tests/threads_SRC += tests/threads/vtrr_tests.c
+
