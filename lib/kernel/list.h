@@ -109,6 +109,7 @@ struct list
         ((STRUCT *) ((uint8_t *) &(LIST_ELEM)->next     \
                      - offsetof (STRUCT, MEMBER.next)))
 
+/* Iterate through the list.  Be sure to declare elem beforehand. */ 
 #define lforeach(elem, listptr) for (elem = list_begin(listptr);\
                                   elem != list_end(listptr);\
                                   elem = list_next(elem))
