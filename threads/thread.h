@@ -13,7 +13,8 @@ enum thread_status
     THREAD_RUNNING,     /* Running thread. */
     THREAD_READY,       /* Not running but ready to run. */
     THREAD_BLOCKED,     /* Waiting for an event to trigger. */
-    THREAD_DYING        /* About to be destroyed. */
+    THREAD_DYING,       /* About to be destroyed. */
+    THREAD_DEAD
   };
 
 /* Thread identifier type.
@@ -87,22 +88,37 @@ struct thread
     /* Owned by thread.c. */
     tid_t tid;                          /* Thread identifier. */
     enum thread_status status;          /* Thread state. */
+    struct list_elem child_elem;
+    
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    
+    struct list children;
+    struct lock children_lock;
+    struct thread* parent;
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 
-    struct file *(files[NUM_FD]);          /* File descriptor table */
-
+    struct file *(files[NUM_FD]);       /* File descriptor table */
+    
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  };
+
+struct dead_thread
+  {
+    //The head of this struct must be the same as thread
+    tid_t tid;
+    enum thread_status status;
+    struct list_elem child_elem;
+    int exit_code;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -118,6 +134,8 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
+tid_t thread_create_child (const char*,int priority, thread_func *, void *);
+
 
 void thread_block (void);
 void thread_unblock (struct thread *);
