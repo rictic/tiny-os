@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/init.h"
+#include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
@@ -12,6 +13,9 @@
 inline static struct file* get_file(int fd) {
   return fdtable[fd];
 }
+
+static int get_user (const uint8_t *uaddr);
+static bool put_user (uint8_t *udst, uint8_t byte);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -183,7 +187,7 @@ validate_read (char *buffer, unsigned size)
 		thread_exit ();
 	else
 	{
-		for (count = 0; count <= size, count ++)
+		for (count = 0; count <= size; count ++)
 		{
 			result = get_user (buffer + count);
 			if (result == -1)
@@ -206,7 +210,7 @@ validate_write (uint8_t byte, void *buffer, unsigned size)
 		thread_exit ();
 	else
 	{
-		for (count = 0; count <= size, count ++)
+		for (count = 0; count <= size; count ++)
 		{
 			if (!put_user (buffer, byte))
 			{
@@ -229,10 +233,11 @@ get_user (const uint8_t *uaddr)
        : "=&a" (result) : "m" (*uaddr));
   return result;
 }
+
 /* Writes BYTE to user address UDST.
    UDST must be below PHYS_BASE.
    Returns true if successful, false if a segfault occurred. */
-static bool
+static bool 
 put_user (uint8_t *udst, uint8_t byte)
 {
   int error_code;
