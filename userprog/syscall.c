@@ -31,7 +31,7 @@ static void halt (void) {
   the process's parent waits for it (see below), this is the status that 
   will be returned. Conventionally, a status of 0 indicates success and 
   nonzero values indicate errors. */
-static void exit (int status) {
+void exit (int status) {
   struct thread *t = thread_current ();
   // if the parent isn't dead
   if (t->parent != NULL){
@@ -162,7 +162,7 @@ static unsigned tell (int fd){
 /* Closes file descriptor fd. Exiting or terminating a process implicitly 
   closes all its open file descriptors, as if by calling this function 
   for each one. */
-static void close (int fd){
+void close (int fd){
   struct file *file = get_file (fd);
   if (fd < 2) return;
   if (file == NULL) return;
@@ -182,6 +182,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  //TODO: validate f->esp
   int *args = f->esp; args++;
   int sys_call = *((int *)f->esp);
   int return_val = f->eax;

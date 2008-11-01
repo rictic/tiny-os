@@ -13,6 +13,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 
@@ -301,18 +302,25 @@ thread_exit (void)
 {
   struct thread *t = thread_current ();
   struct list_elem *elem;
+  int i = 0;
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
   process_exit ();
 #endif
   
+  //close all of our files
+  for(i=0; i<NUM_FD; i++)
+    close (i);
+    
   //Tell our children that we're dead
   lock_acquire (&t->children_lock);
   lforeach(elem, &t->children) {
     struct thread *child = list_entry(elem,struct thread, child_elem);
     if (child->status != THREAD_DEAD)
       child->parent = NULL;
+    else
+      free (child); //our responsibility to free the dead_thread
   }
   lock_release (&t->children_lock);
   
