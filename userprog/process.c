@@ -109,12 +109,11 @@ execute_thread (void *file_name_)
   char **argvs, **temp2;
   argvs = (size_t)argv_stack_address - (4 * count +5);
   temp2 = argvs;
+  size_t argvs_offset = (size_t)argv_stack_address;
   for (i = 0; i < count; i++)
   {
-	  if (i == 0)
-		  *temp2 = (size_t)argv_stack_address;
-	  else
-		  *temp2 = (size_t)argv_stack_address + arg_length[i-1];
+	  *temp2 = argvs_offset;
+	  argvs_offset += arg_length[i];
 	  temp2 = (size_t)temp2 + 4;
   }
   *temp2 = 0;
