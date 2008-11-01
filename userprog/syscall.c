@@ -187,12 +187,12 @@ syscall_handler (struct intr_frame *f)
   switch (sys_call){
     case SYS_HALT    : halt (); break;
     case SYS_EXIT    : exit (args[0]); break;
-    case SYS_EXEC    : break;                   //TODO
+    case SYS_EXEC    : return_val = exec (args[0]); break;
     case SYS_WAIT    : return_val = wait (args[0]); break; 
     case SYS_CREATE  : return_val = create ((char *)args[0], args[1]); break;
     case SYS_REMOVE  : return_val = remove ((char *)args[0]); break;
     case SYS_OPEN    : return_val = open ((char *)args[0]); break;
-    case SYS_FILESIZE: break;                   //TODO
+    case SYS_FILESIZE: break;                                         //TODO
     case SYS_READ    : return_val = read (args[0], (char *)args[1], args[2]); break;
     case SYS_WRITE   : return_val = write (args[0], (char *)args[1], args[2]); break;
     case SYS_SEEK    : seek (args[0], args[1]); break; 
