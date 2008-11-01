@@ -131,7 +131,8 @@ execute_thread (void *file_name_)
   *argc = count;
   
   if_.esp = (size_t)argc - 4;
-  	  
+  strlcpy(thread_current()->name,*argvs, sizeof(thread_current()->name));
+     
   /* If load failed, quit. */
   palloc_free_page (file_name);
   
