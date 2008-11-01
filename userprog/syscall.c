@@ -13,6 +13,7 @@
 
 #define fdtable thread_current ()->files
 inline static struct file* get_file(int fd) {
+  if ((fd < 0) || (fd >= NUM_FD)) exit(-1);
   return fdtable[fd];
 }
 
@@ -78,7 +79,7 @@ static int wait (int pid){
  Returns true if successful, false otherwise. */
 static bool create (const char *file, unsigned initial_size){
   //TODO: validate file
-  if (file == NULL) return false;
+  if (file == NULL) exit(-1);
   return filesys_create (file, initial_size);
 }
 
