@@ -58,7 +58,7 @@ execute_thread (void *file_name_)
   
   char *token, *save_ptr;
   int count = 0;
-  char *argv_temp[4];
+  char *argv_temp[100];
   
   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
        token = strtok_r (NULL, " ", &save_ptr))

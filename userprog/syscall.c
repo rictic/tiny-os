@@ -21,6 +21,8 @@ static struct lock filesys_lock;
 
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
+static void validate_read (char *buffer, unsigned size);
+static void validate_write (uint8_t byte, void *buffer, unsigned size);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -217,9 +219,12 @@ syscall_handler (struct intr_frame *f)
 {
   //TODO: validate f->esp
   int *args = f->esp; args++;
-  int sys_call = *((int *)f->esp);
   int return_val = f->eax;
   
+  validate_read (f->esp, 1);
+  
+  int sys_call = *((int *)f->esp);
+
   switch (sys_call){
     case SYS_HALT    : halt (); break;
     case SYS_EXIT    : exit (args[0]); break;
@@ -234,8 +239,9 @@ syscall_handler (struct intr_frame *f)
     case SYS_SEEK    : seek (args[0], args[1]); break; 
     case SYS_TELL    : return_val = tell (args[0]); break; 
     case SYS_CLOSE   : close (args[0]); break;
-    default: printf ("Unknown system call\n");
-             halt ();
+    default: exit(-1);
+    /*default: printf ("Unknown system call\n");
+             halt ();*/
   }
   
   //"return" the value back where it's expected
@@ -248,15 +254,17 @@ validate_read (char *buffer, unsigned size)
 {
 	unsigned count = 0;
 	
-	if (buffer + size >= (char *)PHYS_BASE)
-		thread_exit ();
+	if (buffer + size >= (size_t)PHYS_BASE)
+		exit(-1);
+		//thread_exit ();
 	else
 	{
 		for (count = 0; count <= size; count ++)
 		{
 			if (get_user (buffer + count) == -1)
 			{
-				thread_exit ();
+				exit(-1);
+				//thread_exit ();
 				break;
 			}	
 		}
@@ -269,15 +277,17 @@ validate_write (uint8_t byte, void *buffer, unsigned size)
 {
 	unsigned count;
 	
-	if (buffer + size >= PHYS_BASE)
-		thread_exit ();
+	if (buffer + size >= (size_t)PHYS_BASE)
+		exit(-1);
+		//thread_exit ();
 	else
 	{
 		for (count = 0; count <= size; count ++)
 		{
 			if (!put_user (buffer, byte))
 			{
-				thread_exit ();
+				exit(-1);
+				//thread_exit ();
 				break;
 			}	
 		}
