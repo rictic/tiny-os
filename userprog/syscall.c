@@ -9,6 +9,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 #define fdtable thread_current ()->files
 inline static struct file* get_file(int fd) {
@@ -123,7 +124,7 @@ static int read (int fd, void *buffer, unsigned size){
 
   if (fd == 0)
     return -1; //TODO: STDIN
-  struct file *file = get_file (file);
+  struct file *file = get_file (fd);
   return file_read (file, buffer, size);
 }
 
@@ -209,17 +210,15 @@ syscall_handler (struct intr_frame *f)
 static void 
 validate_read (char *buffer, unsigned size)
 {
-	int count = 0;
-	int result;
+	unsigned count = 0;
 	
-	if (buffer + size >= PHYS_BASE)
+	if (buffer + size >= (char *)PHYS_BASE)
 		thread_exit ();
 	else
 	{
 		for (count = 0; count <= size; count ++)
 		{
-			result = get_user (buffer + count);
-			if (result == -1)
+			if (get_user (buffer + count) == -1)
 			{
 				thread_exit ();
 				break;
@@ -232,8 +231,7 @@ validate_read (char *buffer, unsigned size)
 static void 
 validate_write (uint8_t byte, void *buffer, unsigned size)
 {
-	int count;
-	int result;
+	unsigned count;
 	
 	if (buffer + size >= PHYS_BASE)
 		thread_exit ();

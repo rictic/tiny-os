@@ -161,7 +161,7 @@ process_wait (tid_t child_tid)
 {
   struct thread *t = thread_current ();
   struct list_elem *elem = NULL;
-  struct dead_thread *d;
+  struct dead_thread *d = NULL;
   int exit_code;
   while(true){
     lock_acquire(&t->children_lock);

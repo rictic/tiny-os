@@ -158,7 +158,7 @@ mk_thread (const char *name, int priority,
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
-    return TID_ERROR;
+    return NULL;
 
   /* Initialize thread. */
   init_thread (t, name, priority);
@@ -200,6 +200,8 @@ thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
   struct thread *t = mk_thread(name, priority, function, aux); 
+  if (t == NULL)
+    return TID_ERROR;
   tid_t tid = t->tid;
   /* Add to run queue. */
   thread_unblock (t);
@@ -212,6 +214,8 @@ thread_create_child (const char *name, int priority,
                  thread_func *function, void *aux)
 {
   struct thread *t = mk_thread(name, priority, function, aux); 
+  if (t == NULL)
+    return TID_ERROR;
   tid_t tid = t->tid;
   struct thread *cur = thread_current ();
   lock_acquire (&cur->children_lock);
@@ -467,7 +471,6 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  memset (t->files, NULL, sizeof t->files);
   t->magic = THREAD_MAGIC;
   list_init (&t->children);
   lock_init (&t->children_lock);
