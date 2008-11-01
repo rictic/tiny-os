@@ -47,6 +47,7 @@ static void exit (int status) {
     }
     lock_release (&t->parent->children_lock);
   }
+  printf("%s: exit(%d)\n", t->name, status);
   
   thread_exit ();
 }
@@ -187,7 +188,7 @@ syscall_handler (struct intr_frame *f)
   switch (sys_call){
     case SYS_HALT    : halt (); break;
     case SYS_EXIT    : exit (args[0]); break;
-    case SYS_EXEC    : return_val = exec (args[0]); break;
+    case SYS_EXEC    : return_val = exec ((char *)args[0]); break;
     case SYS_WAIT    : return_val = wait (args[0]); break; 
     case SYS_CREATE  : return_val = create ((char *)args[0], args[1]); break;
     case SYS_REMOVE  : return_val = remove ((char *)args[0]); break;
