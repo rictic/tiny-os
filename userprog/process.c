@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -39,9 +40,10 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, execute_thread, fn_copy);
+  tid = thread_create_child (file_name, PRI_DEFAULT, execute_thread, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  
   return tid;
 }
 
@@ -155,11 +157,37 @@ execute_thread (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  while(true);
-  
-  return -1;
+  struct thread *t = thread_current ();
+  struct list_elem *elem = NULL;
+  struct dead_thread *d;
+  int exit_code;
+  while(true){
+    lock_acquire(&t->children_lock);
+    lforeach(elem, &t->children){
+      d = list_entry(elem, struct dead_thread, child_elem);
+      if (child_tid == d->tid)
+        break;
+    }
+    //if we can't find the child
+    if (elem == list_end(&t->children))
+      return -1;
+
+    if (d->status >= THREAD_DYING){
+      //killed without fixing itself
+      if (d->status == THREAD_DYING) 
+        exit_code = -1;
+      else
+        exit_code = d->exit_code;
+      list_remove (&d->child_elem);
+      lock_release(&t->children_lock);
+      return exit_code;
+    }
+    //otherwise, loop!
+    lock_release(&t->children_lock);
+    thread_yield ();
+  }
 }
 
 /* Free the current process's resources. */

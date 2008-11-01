@@ -143,24 +143,9 @@ thread_print_stats (void)
           idle_ticks, kernel_ticks, user_ticks);
 }
 
-/* Creates a new kernel thread named NAME with the given initial
-   PRIORITY, which executes FUNCTION passing AUX as the argument,
-   and adds it to the ready queue.  Returns the thread identifier
-   for the new thread, or TID_ERROR if creation fails.
-
-   If thread_start() has been called, then the new thread may be
-   scheduled before thread_create() returns.  It could even exit
-   before thread_create() returns.  Contrariwise, the original
-   thread may run for any amount of time before the new thread is
-   scheduled.  Use a semaphore or some other form of
-   synchronization if you need to ensure ordering.
-
-   The code provided sets the new thread's `priority' member to
-   PRIORITY, but no actual priority scheduling is implemented.
-   Priority scheduling is the goal of Problem 1-3. */
-tid_t
-thread_create (const char *name, int priority,
-               thread_func *function, void *aux) 
+static struct thread *
+mk_thread (const char *name, int priority,
+              thread_func *function, void *aux)
 {
   struct thread *t;
   struct kernel_thread_frame *kf;
@@ -192,10 +177,50 @@ thread_create (const char *name, int priority,
   /* Stack frame for switch_threads(). */
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
+  return t;
+}
 
+/* Creates a new kernel thread named NAME with the given initial
+   PRIORITY, which executes FUNCTION passing AUX as the argument,
+   and adds it to the ready queue.  Returns the thread identifier
+   for the new thread, or TID_ERROR if creation fails.
+
+   If thread_start() has been called, then the new thread may be
+   scheduled before thread_create() returns.  It could even exit
+   before thread_create() returns.  Contrariwise, the original
+   thread may run for any amount of time before the new thread is
+   scheduled.  Use a semaphore or some other form of
+   synchronization if you need to ensure ordering.
+
+   The code provided sets the new thread's `priority' member to
+   PRIORITY, but no actual priority scheduling is implemented.
+   Priority scheduling is the goal of Problem 1-3. */
+tid_t
+thread_create (const char *name, int priority,
+               thread_func *function, void *aux) 
+{
+  struct thread *t = mk_thread(name, priority, function, aux); 
+  tid_t tid = t->tid;
   /* Add to run queue. */
   thread_unblock (t);
 
+  return tid;
+}
+
+tid_t
+thread_create_child (const char *name, int priority,
+                 thread_func *function, void *aux)
+{
+  struct thread *t = mk_thread(name, priority, function, aux); 
+  tid_t tid = t->tid;
+  struct thread *cur = thread_current ();
+  lock_acquire (&cur->children_lock);
+  list_push_back (&cur->children, &t->child_elem);
+  lock_release (&cur->children_lock);
+  t->parent = cur;
+  /* Add to run queue. */
+  thread_unblock (t);
+  
   return tid;
 }
 
@@ -260,7 +285,7 @@ thread_current (void)
 
 /* Returns the running thread's tid. */
 tid_t
-thread_tid (void) 
+thread_tid (void)
 {
   return thread_current ()->tid;
 }
@@ -270,16 +295,27 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
+  struct thread *t = thread_current ();
+  struct list_elem *elem;
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
   process_exit ();
 #endif
-
+  
+  //Tell our children that we're dead
+  lock_acquire (&t->children_lock);
+  lforeach(elem, &t->children) {
+    struct thread *child = list_entry(elem,struct thread, child_elem);
+    if (child->status != THREAD_DEAD)
+      child->parent = NULL;
+  }
+  lock_release (&t->children_lock);
+  
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
-  thread_current ()->status = THREAD_DYING;
+  t->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -433,6 +469,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   memset (t->files, NULL, sizeof t->files);
   t->magic = THREAD_MAGIC;
+  list_init (&t->children);
+  lock_init (&t->children_lock);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
