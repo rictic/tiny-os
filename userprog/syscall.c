@@ -106,7 +106,7 @@ static bool remove (const char *file){
   "file descriptor" (fd), or -1 if the file could not be opened. */
 static int open (const char *file){
   //TODO: validate file
-  if (file == NULL) return -1;
+  if (file == NULL) exit(-1);
   
   //find an open place in our fd table
   struct file **table = fdtable;
