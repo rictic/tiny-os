@@ -183,7 +183,7 @@ validate_read (char *buffer, unsigned size)
 	int count = 0;
 	int result;
 	
-	if (buffer + size > PHYS_BASE)
+	if (buffer + size >= PHYS_BASE)
 		thread_exit ();
 	else
 	{
@@ -206,7 +206,7 @@ validate_write (uint8_t byte, void *buffer, unsigned size)
 	int count;
 	int result;
 	
-	if (buffer + size > PHYS_BASE)
+	if (buffer + size >= PHYS_BASE)
 		thread_exit ();
 	else
 	{

@@ -53,19 +53,87 @@ execute_thread (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  
+  char *token, *save_ptr;
+  int count = 0;
+  char *argv_temp[4];
+  
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr))
+  {
+	  argv_temp[count] = token;
+	  count ++;	  
+  }
+  
+  char *argv_count[count];
+  int i; 
+  size_t sum = 0;
+  size_t arg_length[count];
 
+  for (i = 0; i < count; i++)
+  {
+	  argv_count[i] = argv_temp[i];	  
+	  arg_length[i] = strlen(argv_count[i]) + 1;
+	  sum += arg_length[i];
+  }	  
+  
+  
+  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (argv_count[0], &if_.eip, &if_.esp);
 
+  if (!success) 
+  {
+	  /* If load failed, quit. */
+	  palloc_free_page (file_name);
+	  thread_exit ();	  
+  }	  
+
+  
+  
+  char *argv_stack_address, *temp;
+  argv_stack_address = (size_t)(PHYS_BASE - sum);
+  temp = argv_stack_address;
+  for (i = 0; i < count; i++)
+  {
+	  strlcpy (temp, argv_count[i], arg_length[i]);
+	  temp = (size_t)temp + arg_length[i];	  
+  }	  
+ 
+  char **argvs, **temp2;
+  argvs = (size_t)argv_stack_address - (4 * count +5);
+  temp2 = argvs;
+  for (i = 0; i < count; i++)
+  {
+	  if (i == 0)
+		  *temp2 = (size_t)argv_stack_address;
+	  else
+		  *temp2 = (size_t)argv_stack_address + arg_length[i-1];
+	  temp2 = (size_t)temp2 + 4;
+  }
+  *temp2 = 0;
+  
+  uint8_t *word_align;
+  word_align = (size_t)argv_stack_address - 1;
+  *word_align = 0;
+  
+  char ***argv;
+  argv = (size_t)argvs -4;
+  *argv = argvs;
+  
+  int *argc;
+  argc = (size_t)argv - 4;
+  *argc = count;
+  
+  if_.esp = (size_t)argc - 4;
+  	  
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
-
+  
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -73,6 +141,7 @@ execute_thread (void *file_name_)
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  
   NOT_REACHED ();
 }
 
@@ -215,7 +284,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-
+  
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -359,8 +428,8 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
      it then user code that passed a null pointer to system calls
      could quite likely panic the kernel by way of null pointer
      assertions in memcpy(), etc. */
-  if (phdr->p_vaddr < PGSIZE)
-    return false;
+  //if (phdr->p_vaddr < PGSIZE)
+    //return false;
 
   /* It's okay. */
   return true;
@@ -438,7 +507,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
