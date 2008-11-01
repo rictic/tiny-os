@@ -27,22 +27,41 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *cmdline) 
 {
-  char *fn_copy;
+  char *cmdline_copy;
   tid_t tid;
+  size_t i;
+  char file_name[17];
+  
+  for(i = 0; i < sizeof(file_name)-1; i++) {
+    if ((cmdline[i] == ' ') || cmdline[i] == '\0')
+      break;
+    file_name[i] = cmdline[i];
+  }
+  while(i < sizeof(file_name))
+    file_name[i++] = '\0';
+  
+  struct file * file = filesys_open (file_name);
+  if (file == NULL)
+    return TID_ERROR;
 
+  file_deny_write (file);
+    
+    
+//   file_deny_write(file);
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  cmdline_copy = palloc_get_page (0);
+  if (cmdline_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (cmdline_copy, cmdline, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create_child (file_name, PRI_DEFAULT, execute_thread, fn_copy);
+  tid = thread_create_child (file_name, file, PRI_DEFAULT, execute_thread, cmdline_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (cmdline_copy); 
   
   return tid;
 }
@@ -131,7 +150,6 @@ execute_thread (void *file_name_)
   *argc = count;
   
   if_.esp = (size_t)argc - 4;
-  strlcpy(thread_current()->name,*argvs, sizeof(thread_current()->name));
      
   /* If load failed, quit. */
   palloc_free_page (file_name);

@@ -102,6 +102,8 @@ struct thread
     struct lock children_lock;
     struct thread* parent;
     
+    struct file* file;                  /* To deny writes to our executable */
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -135,7 +137,7 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
-tid_t thread_create_child (const char*,int priority, thread_func *, void *);
+tid_t thread_create_child (const char*, struct file *, int priority, thread_func *, void *);
 
 
 void thread_block (void);

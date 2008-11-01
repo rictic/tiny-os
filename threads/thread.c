@@ -211,7 +211,7 @@ thread_create (const char *name, int priority,
 }
 
 tid_t
-thread_create_child (const char *name, int priority,
+thread_create_child (const char *name, struct file *file, int priority,
                  thread_func *function, void *aux)
 {
   struct thread *t = mk_thread(name, priority, function, aux); 
@@ -223,6 +223,7 @@ thread_create_child (const char *name, int priority,
   list_push_back (&cur->children, &t->child_elem);
   lock_release (&cur->children_lock);
   t->parent = cur;
+  t->file = file;
   /* Add to run queue. */
   thread_unblock (t);
   
@@ -312,7 +313,7 @@ thread_exit (void)
   //close all of our files
   for(i=0; i<NUM_FD; i++)
     close (i);
-    
+  file_close (t->file);  
   //Tell our children that we're dead
   lock_acquire (&t->children_lock);
   lforeach(elem, &t->children) {
