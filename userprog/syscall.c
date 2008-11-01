@@ -17,6 +17,8 @@ inline static struct file* get_file(int fd) {
   return fdtable[fd];
 }
 
+static struct lock filesys_lock;
+
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 
@@ -59,7 +61,9 @@ void exit (int status) {
   if the program cannot load or run for any reason. */
 static int exec (const char *cmd_line) {
   //TODO: validate cmd_line
+  lock_acquire (&filesys_lock);
   tid_t tid = process_execute (cmd_line);
+  lock_release (&filesys_lock);
   if (tid == TID_ERROR)
     return -1;
   return tid;
@@ -79,15 +83,23 @@ static int wait (int pid){
  Returns true if successful, false otherwise. */
 static bool create (const char *file, unsigned initial_size){
   //TODO: validate file
+  bool result;
   if (file == NULL) exit(-1);
-  return filesys_create (file, initial_size);
+  lock_acquire (&filesys_lock);
+  result = filesys_create (file, initial_size);
+  lock_release (&filesys_lock);
+  return result;
 }
 
 /* Deletes the file called file. Returns true if successful, false otherwise.*/ 
 static bool remove (const char *file){
   //TODO: validate file
+  bool result;
   if (file == NULL) return false;
-  return filesys_remove (file);
+  lock_acquire (&filesys_lock);
+  result = filesys_remove (file);
+  lock_release (&filesys_lock);
+  return result;
 }
 
 /* Opens the file called file. Returns a nonnegative integer handle called a 
@@ -106,7 +118,9 @@ static int open (const char *file){
   if (fd == NUM_FD)
     return -1;
   
+  lock_acquire (&filesys_lock);
   table[fd] = filesys_open (file);
+  lock_release (&filesys_lock);
   if (table[fd] == NULL) return -1;
   return fd;
 }
@@ -120,6 +134,7 @@ static int open (const char *file){
  using input_getc(). */
 static int read (int fd, void *buffer, unsigned size){
   //TODO: validate buffer
+  int result;
   if (buffer == NULL) return -1;
   if (fd == 1)
     return -1;
@@ -127,7 +142,10 @@ static int read (int fd, void *buffer, unsigned size){
   if (fd == 0)
     return -1; //TODO: STDIN
   struct file *file = get_file (fd);
-  return file_read (file, buffer, size);
+  lock_acquire (&filesys_lock);
+  result = file_read (file, buffer, size);
+  lock_release (&filesys_lock);
+  return result;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
@@ -135,6 +153,7 @@ static int read (int fd, void *buffer, unsigned size){
 static int write (int fd, const void *buffer, unsigned size){
   //TODO: validate buffer
   struct file *file;
+  int result;
   
   if (fd == 1){
     putbuf (buffer, size);
@@ -143,20 +162,31 @@ static int write (int fd, const void *buffer, unsigned size){
   file = get_file (fd);
   if (file == NULL)
     return -1;
-  return file_write (file, buffer, size);
+  lock_acquire (&filesys_lock);
+  result = file_write (file, buffer, size);
+  lock_release (&filesys_lock);
+  return result;
 }
 
 /* Changes the next byte to be read or written in open file fd to position, 
   expressed in bytes from the beginning of the file. (Thus, a position of 
   0 is the file's start.) */
 static void seek (int fd, unsigned position){
-  file_seek (get_file (fd), position);
+  struct file * f = get_file (fd);
+  lock_acquire (&filesys_lock);
+  file_seek (f, position);
+  lock_release (&filesys_lock);
 }
 
 /* Returns the position of the next byte to be read or written in open file 
   fd, expressed in bytes from the beginning of the file. */
 static unsigned tell (int fd){
-  return file_tell (get_file (fd));
+  unsigned result;
+  struct file * f = get_file (fd);
+  lock_acquire (&filesys_lock);
+  result = file_tell (f);
+  lock_release (&filesys_lock);
+  return result;
 }
 
 /* Closes file descriptor fd. Exiting or terminating a process implicitly 
@@ -166,7 +196,9 @@ void close (int fd){
   struct file *file = get_file (fd);
   if (fd < 2) return;
   if (file == NULL) return;
+  lock_acquire (&filesys_lock);
   file_close (file);
+  lock_release (&filesys_lock);
   fdtable[fd] = NULL;
 }
 
@@ -176,6 +208,7 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void) 
 {
+  lock_init (&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
