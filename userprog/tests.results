@@ -36,7 +36,7 @@ pass tests/userprog/read-zero
 pass tests/userprog/read-stdout
 pass tests/userprog/read-bad-fd
 pass tests/userprog/write-normal
-FAIL tests/userprog/write-bad-ptr
+pass tests/userprog/write-bad-ptr
 pass tests/userprog/write-boundary
 pass tests/userprog/write-zero
 pass tests/userprog/write-stdin
@@ -75,4 +75,4 @@ FAIL tests/filesys/base/sm-seq-random
 pass tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
 pass tests/filesys/base/syn-write
-20 of 76 tests failed.
+19 of 76 tests failed.

@@ -152,7 +152,7 @@ static int read (int fd, void *buffer, unsigned size){
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
   bytes actually written, or -1 if the file could not be written. */
 static int write (int fd, const void *buffer, unsigned size){
-  //TODO: validate buffer
+  validate_read(buffer, size);
   struct file *file;
   int result;
   
@@ -216,7 +216,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  //TODO: validate f->esp
   int *args = f->esp; args++;
   int return_val = f->eax;
   
