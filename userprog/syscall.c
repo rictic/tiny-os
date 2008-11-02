@@ -22,7 +22,7 @@ static struct lock filesys_lock;
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void validate_read (const char *buffer, unsigned size);
-static void validate_write (uint8_t byte, char *buffer, unsigned size);
+static void validate_write (const char *from, char *user_to, unsigned size);
 static void validate_string (const char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
@@ -135,18 +135,21 @@ static int open (const char *file){
  using input_getc(). */
 static int read (int fd, void *buffer, unsigned size){
   //TODO: validate buffer
-  int result;
+  int bytes_read;
+  char * localbuff;
   if (buffer == NULL) return -1;
   if (fd == 1)
     return -1;
-
   if (fd == 0)
     return -1; //TODO: STDIN
+    
+  localbuff = malloc (size);
   struct file *file = get_file (fd);
   lock_acquire (&filesys_lock);
-  result = file_read (file, buffer, size);
+  bytes_read = file_read (file, localbuff, size);
   lock_release (&filesys_lock);
-  return result;
+  validate_write (localbuff, buffer, bytes_read);
+  return bytes_read;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
@@ -262,42 +265,30 @@ validate_read (const char *buffer, unsigned size)
 	
 	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
-		//thread_exit ();
-	else
+	for (count = 0; count < size; count ++)
 	{
-		for (count = 0; count <= size; count ++)
+		if (get_user (buffer + count) == -1)
 		{
-			if (get_user (buffer + count) == -1)
-			{
-				exit(-1);
-				//thread_exit ();
-				break;
-			}	
-		}
+			exit(-1);
+		}	
 	}
 }
 
-/* Validate writing memory */
+/* Validate writing to user memory */
 static void 
-validate_write (uint8_t byte, char *buffer, unsigned size)
+validate_write (const char *from, char *user_to, unsigned size)
 {
 	unsigned count;
 	
-	if (buffer + size >= (char *)PHYS_BASE)
+	if (user_to + size >= (char *)PHYS_BASE)
 		exit(-1);
-		//thread_exit ();
-	else
+	for (count = 0; count < size; count ++)
 	{
-		for (count = 0; count <= size; count ++)
+		if (!put_user (user_to+count, *(from+count)))
 		{
-			if (!put_user (buffer, byte))
-			{
-				exit(-1);
-				//thread_exit ();
-				break;
-			}	
-		}
-	}	
+			exit(-1);
+		}	
+	}
 }
 
 /* Reads a byte at user virtual address UADDR.
