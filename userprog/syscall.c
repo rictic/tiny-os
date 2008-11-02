@@ -23,6 +23,7 @@ static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void validate_read (char *buffer, unsigned size);
 static void validate_write (uint8_t byte, void *buffer, unsigned size);
+static void validate_string (char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -62,7 +63,7 @@ void exit (int status) {
   Must return pid -1, which otherwise should not be a valid pid, 
   if the program cannot load or run for any reason. */
 static int exec (const char *cmd_line) {
-  //TODO: validate cmd_line
+  validate_string (cmd_line);
   lock_acquire (&filesys_lock);
   tid_t tid = process_execute (cmd_line);
   lock_release (&filesys_lock);
@@ -84,7 +85,7 @@ static int wait (int pid){
 /* Creates a new file called file initially initial_size bytes in size.
  Returns true if successful, false otherwise. */
 static bool create (const char *file, unsigned initial_size){
-  //TODO: validate file
+  validate_string (file);
   bool result;
   if (file == NULL) exit(-1);
   lock_acquire (&filesys_lock);
@@ -95,7 +96,7 @@ static bool create (const char *file, unsigned initial_size){
 
 /* Deletes the file called file. Returns true if successful, false otherwise.*/ 
 static bool remove (const char *file){
-  //TODO: validate file
+  validate_string (file);
   bool result;
   if (file == NULL) return false;
   lock_acquire (&filesys_lock);
@@ -107,9 +108,7 @@ static bool remove (const char *file){
 /* Opens the file called file. Returns a nonnegative integer handle called a 
   "file descriptor" (fd), or -1 if the file could not be opened. */
 static int open (const char *file){
-  //TODO: validate file
-  if (file == NULL) exit(-1);
-  
+  validate_string (file);
   //find an open place in our fd table
   struct file **table = fdtable;
   int fd;
@@ -240,15 +239,23 @@ syscall_handler (struct intr_frame *f)
     case SYS_TELL    : return_val = tell (args[0]); break; 
     case SYS_CLOSE   : close (args[0]); break;
     default: exit(-1);
-    /*default: printf ("Unknown system call\n");
-             halt ();*/
   }
   
-  //"return" the value back where it's expected
+  //"return" the value back as though this were a function call
   f->eax=return_val;
 }
 
-/* Validate reading memory */
+static void
+validate_string (char * string) {
+  size_t i;
+  int val = -1;
+  for(i = 0;val != 0;i++){
+    val = get_user(string+i);
+    if (val == -1) exit(-1);
+  }
+}
+
+/* Validate reading from user memory */
 static void 
 validate_read (char *buffer, unsigned size)
 {
