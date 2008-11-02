@@ -215,29 +215,30 @@ syscall_handler (struct intr_frame *f)
 {
   int *args = f->esp; args++;
   int return_val = f->eax;
-  
+	
   validate_read (f->esp, 1);
   
   int sys_call = *((int *)f->esp);
 
   switch (sys_call){
     case SYS_HALT    : halt (); break;
-    case SYS_EXIT    : exit (args[0]); break;
-    case SYS_EXEC    : return_val = exec ((char *)args[0]); break;
-    case SYS_WAIT    : return_val = wait (args[0]); break; 
-    case SYS_CREATE  : return_val = create ((char *)args[0], args[1]); break;
-    case SYS_REMOVE  : return_val = remove ((char *)args[0]); break;
-    case SYS_OPEN    : return_val = open ((char *)args[0]); break;
-    case SYS_FILESIZE: return_val = filesize (args[0]); break;
-    case SYS_READ    : return_val = read (args[0], (char *)args[1], args[2]); break;
-    case SYS_WRITE   : return_val = write (args[0], (char *)args[1], args[2]); break;
-    case SYS_SEEK    : seek (args[0], args[1]); break; 
-    case SYS_TELL    : return_val = tell (args[0]); break; 
-    case SYS_CLOSE   : close (args[0]); break;
+    case SYS_EXIT    : validate_read (args, 1); exit (args[0]); break;
+    case SYS_EXEC    : validate_read (args, 1); return_val = exec ((char *)args[0]); break;
+    case SYS_WAIT    : validate_read (args, 1); return_val = wait (args[0]); break; 
+    case SYS_CREATE  : validate_read (args, 2); return_val = create ((char *)args[0], args[1]); break;
+    case SYS_REMOVE  : validate_read (args, 1); return_val = remove ((char *)args[0]); break;
+    case SYS_OPEN    : validate_read (args, 1); return_val = open ((char *)args[0]); break;
+    case SYS_FILESIZE: validate_read (args, 1); return_val = filesize (args[0]); break;
+    case SYS_READ    : validate_read (args, 3); return_val = read (args[0], (char *)args[1], args[2]); break;
+    case SYS_WRITE   : validate_read (args, 3); return_val = write (args[0], (char *)args[1], args[2]); break;
+    case SYS_SEEK    : validate_read (args, 2); seek (args[0], args[1]); break; 
+    case SYS_TELL    : validate_read (args, 1); return_val = tell (args[0]); break; 
+    case SYS_CLOSE   : validate_read (args, 1); close (args[0]); break;
     default: exit(-1);
   }
   
   //"return" the value back as though this were a function call
+
   f->eax=return_val;
 }
 
