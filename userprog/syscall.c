@@ -246,6 +246,7 @@ static void
 validate_string (const char * string) {
   size_t i;
   int val = -1;
+  if (string == NULL) exit(-1);
   for(i = 0;val != 0;i++){
     val = get_user(string+i);
     if (val == -1) exit(-1);
