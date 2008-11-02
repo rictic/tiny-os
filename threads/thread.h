@@ -90,6 +90,7 @@ struct thread
     tid_t tid;                          /* Thread identifier. */
     enum thread_status status;          /* Thread state. */
     struct list_elem child_elem;
+    int exit_code;
     
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
@@ -101,6 +102,8 @@ struct thread
     struct list children;
     struct lock children_lock;
     struct thread* parent;
+    
+    
     
     struct file* file;                  /* To deny writes to our executable */
     

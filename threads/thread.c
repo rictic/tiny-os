@@ -314,6 +314,7 @@ thread_exit (void)
   for(i=0; i<NUM_FD; i++)
     close (i);
   file_close (t->file);  
+  
   //Tell our children that we're dead
   lock_acquire (&t->children_lock);
   lforeach(elem, &t->children) {
@@ -324,6 +325,24 @@ thread_exit (void)
       free (child); //our responsibility to free the dead_thread
   }
   lock_release (&t->children_lock);
+  
+  //Tell our parent that we're dead
+  if (t->parent != NULL){
+    lock_acquire (&t->parent->children_lock);
+    //the parent could have died while acquiring the lock
+    if (t->parent != NULL) {
+      struct dead_thread *dead = malloc (sizeof(struct dead_thread));
+
+      dead->tid = t->tid;
+      dead->status = THREAD_DEAD;
+      dead->exit_code = t->exit_code;
+      list_remove(&t->child_elem);
+      list_push_back(&t->parent->children, &dead->child_elem);
+    }
+    lock_release (&t->parent->children_lock);
+  }
+  
+  
   
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
@@ -483,6 +502,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init (&t->children);
   lock_init (&t->children_lock);
+  t->exit_code = -1; //if we don't exit properly, then -1
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

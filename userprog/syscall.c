@@ -38,21 +38,7 @@ static void halt (void) {
   nonzero values indicate errors. */
 void exit (int status) {
   struct thread *t = thread_current ();
-  // if the parent isn't dead
-  if (t->parent != NULL){
-    lock_acquire (&t->parent->children_lock);
-    //the parent could have died while acquiring the lock
-    if (t->parent != NULL) {
-      struct dead_thread *dead = malloc (sizeof(struct dead_thread));
-
-      dead->tid = t->tid;
-      dead->status = THREAD_DEAD;
-      dead->exit_code = status;
-      list_remove(&t->child_elem);
-      list_push_back(&t->parent->children, &dead->child_elem);
-    }
-    lock_release (&t->parent->children_lock);
-  }
+  t->exit_code = status;
   printf("%s: exit(%d)\n", t->name, status);
   
   thread_exit ();
@@ -126,8 +112,6 @@ static int open (const char *file){
   return fd;
 }
 
-/* Returns the size, in bytes, of the file open as fd. */
-// static int filesize (int fd){}
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of
  bytes actually read (0 at end of file), or -1 if the file could not be read 
@@ -193,6 +177,16 @@ static unsigned tell (int fd){
   return result;
 }
 
+/* Returns the size, in bytes, of the file open as fd. */
+static int filesize (int fd){
+  int result;
+  struct file * f = get_file (fd);
+  lock_acquire (&filesys_lock);
+  result = file_length (f);
+  lock_release (&filesys_lock);
+  return result;
+}
+
 /* Closes file descriptor fd. Exiting or terminating a process implicitly 
   closes all its open file descriptors, as if by calling this function 
   for each one. */
@@ -234,7 +228,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_CREATE  : return_val = create ((char *)args[0], args[1]); break;
     case SYS_REMOVE  : return_val = remove ((char *)args[0]); break;
     case SYS_OPEN    : return_val = open ((char *)args[0]); break;
-    case SYS_FILESIZE: break;                                         //TODO
+    case SYS_FILESIZE: return_val = filesize (args[0]); break;
     case SYS_READ    : return_val = read (args[0], (char *)args[1], args[2]); break;
     case SYS_WRITE   : return_val = write (args[0], (char *)args[1], args[2]); break;
     case SYS_SEEK    : seek (args[0], args[1]); break; 
@@ -282,12 +276,9 @@ validate_write (const char *from, char *user_to, unsigned size)
 	
 	if (user_to + size >= (char *)PHYS_BASE)
 		exit(-1);
-	for (count = 0; count < size; count ++)
-	{
+	for (count = 0; count < size; count ++) {
 		if (!put_user (user_to+count, *(from+count)))
-		{
 			exit(-1);
-		}	
 	}
 }
 

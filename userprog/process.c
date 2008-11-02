@@ -197,12 +197,11 @@ process_wait (tid_t child_tid)
 
     if (d->status >= THREAD_DYING){
       //killed without fixing itself
-      if (d->status == THREAD_DYING) 
-        exit_code = -1;
-      else
-        exit_code = d->exit_code;
+      exit_code = d->exit_code;
       list_remove (&d->child_elem);
       lock_release (&t->children_lock);
+      if (d->status == THREAD_DEAD) 
+        free(d); // our responsibility to free a dead child
       return exit_code;
     }
     //otherwise, loop!

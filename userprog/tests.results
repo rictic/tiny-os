@@ -29,7 +29,7 @@ pass tests/userprog/close-twice
 pass tests/userprog/close-stdin
 pass tests/userprog/close-stdout
 pass tests/userprog/close-bad-fd
-FAIL tests/userprog/read-normal
+pass tests/userprog/read-normal
 pass tests/userprog/read-bad-ptr
 pass tests/userprog/read-boundary
 pass tests/userprog/read-zero
@@ -51,7 +51,7 @@ pass tests/userprog/wait-twice
 pass tests/userprog/wait-killed
 pass tests/userprog/wait-bad-pid
 pass tests/userprog/multi-recurse
-FAIL tests/userprog/multi-child-fd
+pass tests/userprog/multi-child-fd
 pass tests/userprog/rox-simple
 pass tests/userprog/rox-child
 pass tests/userprog/rox-multichild
@@ -62,17 +62,17 @@ FAIL tests/userprog/bad-write2
 FAIL tests/userprog/bad-jump
 FAIL tests/userprog/bad-jump2
 FAIL tests/userprog/no-vm/multi-oom
-FAIL tests/filesys/base/lg-create
-FAIL tests/filesys/base/lg-full
+pass tests/filesys/base/lg-create
+pass tests/filesys/base/lg-full
 pass tests/filesys/base/lg-random
-FAIL tests/filesys/base/lg-seq-block
-FAIL tests/filesys/base/lg-seq-random
-FAIL tests/filesys/base/sm-create
-FAIL tests/filesys/base/sm-full
+pass tests/filesys/base/lg-seq-block
+pass tests/filesys/base/lg-seq-random
+pass tests/filesys/base/sm-create
+pass tests/filesys/base/sm-full
 pass tests/filesys/base/sm-random
-FAIL tests/filesys/base/sm-seq-block
-FAIL tests/filesys/base/sm-seq-random
-pass tests/filesys/base/syn-read
+pass tests/filesys/base/sm-seq-block
+pass tests/filesys/base/sm-seq-random
+FAIL tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
 pass tests/filesys/base/syn-write
-18 of 76 tests failed.
+9 of 76 tests failed.
