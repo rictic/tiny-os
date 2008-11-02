@@ -21,9 +21,9 @@ static struct lock filesys_lock;
 
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
-static void validate_read (char *buffer, unsigned size);
-static void validate_write (uint8_t byte, void *buffer, unsigned size);
-static void validate_string (char *string);
+static void validate_read (const char *buffer, unsigned size);
+static void validate_write (uint8_t byte, char *buffer, unsigned size);
+static void validate_string (const char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -245,7 +245,7 @@ syscall_handler (struct intr_frame *f)
 }
 
 static void
-validate_string (char * string) {
+validate_string (const char * string) {
   size_t i;
   int val = -1;
   for(i = 0;val != 0;i++){
@@ -256,11 +256,11 @@ validate_string (char * string) {
 
 /* Validate reading from user memory */
 static void 
-validate_read (char *buffer, unsigned size)
+validate_read (const char *buffer, unsigned size)
 {
 	unsigned count = 0;
 	
-	if (buffer + size >= (size_t)PHYS_BASE)
+	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
 		//thread_exit ();
 	else
@@ -279,11 +279,11 @@ validate_read (char *buffer, unsigned size)
 
 /* Validate writing memory */
 static void 
-validate_write (uint8_t byte, void *buffer, unsigned size)
+validate_write (uint8_t byte, char *buffer, unsigned size)
 {
 	unsigned count;
 	
-	if (buffer + size >= (size_t)PHYS_BASE)
+	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
 		//thread_exit ();
 	else
