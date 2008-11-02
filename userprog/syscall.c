@@ -21,8 +21,9 @@ static struct lock filesys_lock;
 
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
-static void validate_read (char *buffer, unsigned size);
-static void validate_write (uint8_t byte, void *buffer, unsigned size);
+static void validate_read (const char *buffer, unsigned size);
+static void validate_write (const char *from, char *user_to, unsigned size);
+static void validate_string (const char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -62,7 +63,7 @@ void exit (int status) {
   Must return pid -1, which otherwise should not be a valid pid, 
   if the program cannot load or run for any reason. */
 static int exec (const char *cmd_line) {
-  //TODO: validate cmd_line
+  validate_string (cmd_line);
   lock_acquire (&filesys_lock);
   tid_t tid = process_execute (cmd_line);
   lock_release (&filesys_lock);
@@ -84,7 +85,7 @@ static int wait (int pid){
 /* Creates a new file called file initially initial_size bytes in size.
  Returns true if successful, false otherwise. */
 static bool create (const char *file, unsigned initial_size){
-  //TODO: validate file
+  validate_string (file);
   bool result;
   if (file == NULL) exit(-1);
   lock_acquire (&filesys_lock);
@@ -95,7 +96,7 @@ static bool create (const char *file, unsigned initial_size){
 
 /* Deletes the file called file. Returns true if successful, false otherwise.*/ 
 static bool remove (const char *file){
-  //TODO: validate file
+  validate_string (file);
   bool result;
   if (file == NULL) return false;
   lock_acquire (&filesys_lock);
@@ -107,9 +108,7 @@ static bool remove (const char *file){
 /* Opens the file called file. Returns a nonnegative integer handle called a 
   "file descriptor" (fd), or -1 if the file could not be opened. */
 static int open (const char *file){
-  //TODO: validate file
-  if (file == NULL) exit(-1);
-  
+  validate_string (file);
   //find an open place in our fd table
   struct file **table = fdtable;
   int fd;
@@ -136,24 +135,27 @@ static int open (const char *file){
  using input_getc(). */
 static int read (int fd, void *buffer, unsigned size){
   //TODO: validate buffer
-  int result;
+  int bytes_read;
+  char * localbuff;
   if (buffer == NULL) return -1;
   if (fd == 1)
     return -1;
-
   if (fd == 0)
     return -1; //TODO: STDIN
+    
+  localbuff = malloc (size);
   struct file *file = get_file (fd);
   lock_acquire (&filesys_lock);
-  result = file_read (file, buffer, size);
+  bytes_read = file_read (file, localbuff, size);
   lock_release (&filesys_lock);
-  return result;
+  validate_write (localbuff, buffer, bytes_read);
+  return bytes_read;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
   bytes actually written, or -1 if the file could not be written. */
 static int write (int fd, const void *buffer, unsigned size){
-  //TODO: validate buffer
+  validate_read(buffer, size);
   struct file *file;
   int result;
   
@@ -217,7 +219,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  //TODO: validate f->esp
   int *args = f->esp; args++;
   int return_val = f->eax;
 	
@@ -240,58 +241,58 @@ syscall_handler (struct intr_frame *f)
     case SYS_TELL    : validate_read (args, 1); return_val = tell (args[0]); break; 
     case SYS_CLOSE   : validate_read (args, 1); close (args[0]); break;
     default: exit(-1);
-    /*default: printf ("Unknown system call\n");
-             halt ();*/
   }
+  
+  //"return" the value back as though this were a function call
 
-  //"return" the value back where it's expected
   f->eax=return_val;
 }
 
-/* Validate reading memory */
+static void
+validate_string (const char * string) {
+  size_t i;
+  int val = -1;
+  for(i = 0;val != 0;i++){
+    val = get_user(string+i);
+    if (val == -1) exit(-1);
+  }
+}
+
+/* Validate reading from user memory */
 static void 
-validate_read (char *buffer, unsigned size)
+validate_read (const char *buffer, unsigned size)
 {
 	unsigned count = 0;
 	
-	if (buffer + size >= (size_t)PHYS_BASE)
+	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
-		//thread_exit ();
 	else
 	{	
-		for (count = 0; count <= size; count ++)
+		for (count = 0; count < size; count ++)
 		{
 			if (get_user (buffer + count) == -1)
 			{
 				exit(-1);
-				//thread_exit ();
-				break;
 			}	
-		}
+		}	
 	}
 }
 
-/* Validate writing memory */
+/* Validate writing to user memory */
 static void 
-validate_write (uint8_t byte, void *buffer, unsigned size)
+validate_write (const char *from, char *user_to, unsigned size)
 {
 	unsigned count;
 	
-	if (buffer + size >= (size_t)PHYS_BASE)
+	if (user_to + size >= (char *)PHYS_BASE)
 		exit(-1);
-		//thread_exit ();
-	else
+	for (count = 0; count < size; count ++)
 	{
-		for (count = 0; count <= size; count ++)
+		if (!put_user (user_to+count, *(from+count)))
 		{
-			if (!put_user (buffer, byte))
-			{
-				exit(-1);
-				//thread_exit ();
-				break;
-			}	
-		}
-	}	
+			exit(-1);
+		}	
+	}
 }
 
 /* Reads a byte at user virtual address UADDR.

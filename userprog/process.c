@@ -182,15 +182,18 @@ process_wait (tid_t child_tid)
   struct dead_thread *d = NULL;
   int exit_code;
   while(true){
-    lock_acquire(&t->children_lock);
+    lock_acquire (&t->children_lock);
     lforeach(elem, &t->children){
       d = list_entry(elem, struct dead_thread, child_elem);
       if (child_tid == d->tid)
         break;
     }
     //if we can't find the child
-    if (elem == list_end(&t->children))
+    if (elem == list_end(&t->children)){
+      lock_release (&t->children_lock);
       return -1;
+    }
+      
 
     if (d->status >= THREAD_DYING){
       //killed without fixing itself
@@ -199,11 +202,11 @@ process_wait (tid_t child_tid)
       else
         exit_code = d->exit_code;
       list_remove (&d->child_elem);
-      lock_release(&t->children_lock);
+      lock_release (&t->children_lock);
       return exit_code;
     }
     //otherwise, loop!
-    lock_release(&t->children_lock);
+    lock_release (&t->children_lock);
     thread_yield ();
   }
 }
