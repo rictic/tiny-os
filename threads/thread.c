@@ -13,6 +13,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -142,6 +143,43 @@ thread_print_stats (void)
           idle_ticks, kernel_ticks, user_ticks);
 }
 
+static struct thread *
+mk_thread (const char *name, int priority,
+              thread_func *function, void *aux)
+{
+  struct thread *t;
+  struct kernel_thread_frame *kf;
+  struct switch_entry_frame *ef;
+  struct switch_threads_frame *sf;
+  tid_t tid;
+
+  ASSERT (function != NULL);
+
+  /* Allocate thread. */
+  t = palloc_get_page (PAL_ZERO);
+  if (t == NULL)
+    return NULL;
+
+  /* Initialize thread. */
+  init_thread (t, name, priority);
+  tid = t->tid = allocate_tid ();
+
+  /* Stack frame for kernel_thread(). */
+  kf = alloc_frame (t, sizeof *kf);
+  kf->eip = NULL;
+  kf->function = function;
+  kf->aux = aux;
+
+  /* Stack frame for switch_entry(). */
+  ef = alloc_frame (t, sizeof *ef);
+  ef->eip = (void (*) (void)) kernel_thread;
+
+  /* Stack frame for switch_threads(). */
+  sf = alloc_frame (t, sizeof *sf);
+  sf->eip = switch_entry;
+  return t;
+}
+
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
@@ -161,40 +199,33 @@ tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  struct thread *t;
-  struct kernel_thread_frame *kf;
-  struct switch_entry_frame *ef;
-  struct switch_threads_frame *sf;
-  tid_t tid;
-
-  ASSERT (function != NULL);
-
-  /* Allocate thread. */
-  t = palloc_get_page (PAL_ZERO);
+  struct thread *t = mk_thread(name, priority, function, aux); 
   if (t == NULL)
     return TID_ERROR;
-
-  /* Initialize thread. */
-  init_thread (t, name, priority);
-  tid = t->tid = allocate_tid ();
-
-  /* Stack frame for kernel_thread(). */
-  kf = alloc_frame (t, sizeof *kf);
-  kf->eip = NULL;
-  kf->function = function;
-  kf->aux = aux;
-
-  /* Stack frame for switch_entry(). */
-  ef = alloc_frame (t, sizeof *ef);
-  ef->eip = (void (*) (void)) kernel_thread;
-
-  /* Stack frame for switch_threads(). */
-  sf = alloc_frame (t, sizeof *sf);
-  sf->eip = switch_entry;
-
+  tid_t tid = t->tid;
   /* Add to run queue. */
   thread_unblock (t);
 
+  return tid;
+}
+
+tid_t
+thread_create_child (const char *name, struct file *file, int priority,
+                 thread_func *function, void *aux)
+{
+  struct thread *t = mk_thread(name, priority, function, aux); 
+  if (t == NULL)
+    return TID_ERROR;
+  tid_t tid = t->tid;
+  struct thread *cur = thread_current ();
+  lock_acquire (&cur->children_lock);
+  list_push_back (&cur->children, &t->child_elem);
+  lock_release (&cur->children_lock);
+  t->parent = cur;
+  t->file = file;
+  /* Add to run queue. */
+  thread_unblock (t);
+  
   return tid;
 }
 
@@ -259,7 +290,7 @@ thread_current (void)
 
 /* Returns the running thread's tid. */
 tid_t
-thread_tid (void) 
+thread_tid (void)
 {
   return thread_current ()->tid;
 }
@@ -269,16 +300,53 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
+  struct thread *t = thread_current ();
+  struct list_elem *elem;
+  int i = 0;
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
   process_exit ();
 #endif
+  
+  //close all of our files
+  for(i=0; i<NUM_FD; i++)
+    close (i);
+  file_close (t->file);  
+  
+  //Tell our children that we're dead
+  lock_acquire (&t->children_lock);
+  lforeach(elem, &t->children) {
+    struct thread *child = list_entry(elem,struct thread, child_elem);
+    if (child->status != THREAD_DEAD)
+      child->parent = NULL;
+    else
+      free (child); //our responsibility to free the dead_thread
+  }
+  lock_release (&t->children_lock);
+  
+  //Tell our parent that we're dead
+  if (t->parent != NULL){
+    lock_acquire (&t->parent->children_lock);
+    //the parent could have died while acquiring the lock
+    if (t->parent != NULL) {
+      struct dead_thread *dead = malloc (sizeof(struct dead_thread));
 
+      dead->tid = t->tid;
+      dead->status = THREAD_DEAD;
+      dead->exit_code = t->exit_code;
+      list_remove(&t->child_elem);
+      list_push_back(&t->parent->children, &dead->child_elem);
+    }
+    lock_release (&t->parent->children_lock);
+  }
+  
+  
+  
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
-  thread_current ()->status = THREAD_DYING;
+  t->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -430,8 +498,10 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  memset (t->files, NULL, sizeof t->files);
   t->magic = THREAD_MAGIC;
+  list_init (&t->children);
+  lock_init (&t->children_lock);
+  t->exit_code = -1; //if we don't exit properly, then -1
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

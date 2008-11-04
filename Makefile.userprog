@@ -37,10 +37,11 @@ endef
 
 $(foreach prog,$(PROGS),$(eval $(call TEMPLATE,$(prog))))
 
+
 libc.a: $(LIB_OBJ)
 	rm -f $@
 	ar r $@ $^
-	i386-elf-ranlib $@
+	$(RANLIB) $@
 
 clean::
 	rm -f $(PROGS) $(PROGS_OBJ) $(PROGS_DEP)
