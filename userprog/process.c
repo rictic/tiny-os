@@ -124,9 +124,19 @@ execute_thread (void *file_name_)
 	  strlcpy (temp, argv_count[i], arg_length[i]);
 	  temp = (size_t)temp + arg_length[i];	  
   }	  
- 
+  
+  int num_word_align = 4 - sum % 4;
+  
+  uint8_t *word_align;
+  word_align = (size_t)argv_stack_address - num_word_align;
+  
+  for (i =0; i < num_word_align; i++)
+  {
+	  *(word_align + i) = 0;	  
+  } 	 
+  
   char **argvs, **temp2;
-  argvs = (size_t)argv_stack_address - (4 * count +5);
+  argvs = (size_t)word_align - (4 * (count + 1));
   temp2 = argvs;
   size_t argvs_offset = (size_t)argv_stack_address;
   for (i = 0; i < count; i++)
@@ -136,10 +146,6 @@ execute_thread (void *file_name_)
 	  temp2 = (size_t)temp2 + 4;
   }
   *temp2 = 0;
-  
-  uint8_t *word_align;
-  word_align = (size_t)argv_stack_address - 1;
-  *word_align = 0;
   
   char ***argv;
   argv = (size_t)argvs -4;
@@ -476,8 +482,8 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
      it then user code that passed a null pointer to system calls
      could quite likely panic the kernel by way of null pointer
      assertions in memcpy(), etc. */
-  //if (phdr->p_vaddr < PGSIZE)
-    //return false;
+  if (phdr->p_vaddr < PGSIZE)
+    return false;
 
   /* It's okay. */
   return true;
