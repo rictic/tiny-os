@@ -22,6 +22,8 @@
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+static struct lock filesys_lock;
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -34,6 +36,8 @@ process_execute (const char *cmdline)
   size_t i;
   char file_name[17];
   
+  lock_init (&filesys_lock);
+
   for(i = 0; i < sizeof(file_name)-1; i++) {
     if ((cmdline[i] == ' ') || cmdline[i] == '\0')
       break;
@@ -124,9 +128,19 @@ execute_thread (void *file_name_)
 	  strlcpy (temp, argv_count[i], arg_length[i]);
 	  temp = (size_t)temp + arg_length[i];	  
   }	  
- 
+  
+  int num_word_align = 4 - sum % 4;
+  
+  uint8_t *word_align;
+  word_align = (size_t)argv_stack_address - num_word_align;
+  
+  for (i =0; i < num_word_align; i++)
+  {
+	  *(word_align + i) = 0;	  
+  } 	 
+  
   char **argvs, **temp2;
-  argvs = (size_t)argv_stack_address - (4 * count +5);
+  argvs = (size_t)word_align - (4 * (count + 1));
   temp2 = argvs;
   size_t argvs_offset = (size_t)argv_stack_address;
   for (i = 0; i < count; i++)
@@ -136,10 +150,6 @@ execute_thread (void *file_name_)
 	  temp2 = (size_t)temp2 + 4;
   }
   *temp2 = 0;
-  
-  uint8_t *word_align;
-  word_align = (size_t)argv_stack_address - 1;
-  *word_align = 0;
   
   char ***argv;
   argv = (size_t)argvs -4;
@@ -340,7 +350,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
+
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -431,6 +443,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  lock_release (&filesys_lock);
   return success;
 }
 
@@ -476,8 +489,8 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
      it then user code that passed a null pointer to system calls
      could quite likely panic the kernel by way of null pointer
      assertions in memcpy(), etc. */
-  //if (phdr->p_vaddr < PGSIZE)
-    //return false;
+  if (phdr->p_vaddr < PGSIZE)
+    return false;
 
   /* It's okay. */
   return true;
