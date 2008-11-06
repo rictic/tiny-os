@@ -17,7 +17,7 @@ inline static struct file* get_file(int fd) {
   return fdtable[fd];
 }
 
-static struct lock filesys_lock;
+
 
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
@@ -50,9 +50,7 @@ void exit (int status) {
   if the program cannot load or run for any reason. */
 static int exec (const char *cmd_line) {
   validate_string (cmd_line);
-  lock_acquire (&filesys_lock);
   tid_t tid = process_execute (cmd_line);
-  lock_release (&filesys_lock);
   if (tid == TID_ERROR)
     return -1;
   return tid;

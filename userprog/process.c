@@ -18,11 +18,10 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "userprog/syscall.h"
 
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-
-static struct lock filesys_lock;
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -36,7 +35,6 @@ process_execute (const char *cmdline)
   size_t i;
   char file_name[17];
   
-  lock_init (&filesys_lock);
 
   for(i = 0; i < sizeof(file_name)-1; i++) {
     if ((cmdline[i] == ' ') || cmdline[i] == '\0')
@@ -46,14 +44,16 @@ process_execute (const char *cmdline)
   while(i < sizeof(file_name))
     file_name[i++] = '\0';
   
+  lock_acquire (&filesys_lock);
   struct file * file = filesys_open (file_name);
+  lock_release (&filesys_lock);
+  
   if (file == NULL)
     return TID_ERROR;
 
+  lock_acquire (&filesys_lock);
   file_deny_write (file);
-    
-    
-//   file_deny_write(file);
+  lock_release (&filesys_lock);
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -352,7 +352,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Open executable file. */
   lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
-
+  lock_release (&filesys_lock);
+  
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -442,6 +443,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  lock_acquire (&filesys_lock);
   file_close (file);
   lock_release (&filesys_lock);
   return success;
