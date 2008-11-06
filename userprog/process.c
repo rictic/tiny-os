@@ -22,6 +22,8 @@
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+static struct lock filesys_lock;
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -34,6 +36,8 @@ process_execute (const char *cmdline)
   size_t i;
   char file_name[17];
   
+  lock_init (&filesys_lock);
+
   for(i = 0; i < sizeof(file_name)-1; i++) {
     if ((cmdline[i] == ' ') || cmdline[i] == '\0')
       break;
@@ -346,7 +350,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
+
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -437,6 +443,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  lock_release (&filesys_lock);
   return success;
 }
 
