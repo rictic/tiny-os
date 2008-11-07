@@ -22,7 +22,7 @@ inline static struct file* get_file(int fd) {
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void validate_read (const char *buffer, unsigned size);
-static void validate_write (const char *from, char *user_to, unsigned size);
+static void validate_write (const char *from, char *user_to, unsigned size, bool malloc_buffer);
 static void validate_string (const char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
@@ -130,7 +130,7 @@ static int read (int fd, void *buffer, unsigned size){
   lock_acquire (&filesys_lock);
   bytes_read = file_read (file, localbuff, size);
   lock_release (&filesys_lock);
-  validate_write (localbuff, buffer, bytes_read);
+  validate_write (localbuff, buffer, bytes_read, 1);
   free (localbuff);
   return bytes_read;
 }
@@ -271,15 +271,21 @@ validate_read (const char *buffer, unsigned size)
 
 /* Validate writing to user memory */
 static void 
-validate_write (const char *from, char *user_to, unsigned size)
+validate_write (const char *from, char *user_to, unsigned size, bool malloc_buffer)
 {
 	unsigned count;
 	
 	if (user_to + size >= (char *)PHYS_BASE)
-		exit(-1);
+	{
+		if (malloc_buffer) free(from);
+		exit(-1);		
+	}	
 	for (count = 0; count < size; count ++) {
 		if (!put_user (user_to+count, *(from+count)))
-			exit(-1);
+		{
+			if (malloc_buffer) free(from);			
+			exit(-1);			
+		}	
 	}
 }
 
