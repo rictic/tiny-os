@@ -330,7 +330,7 @@ thread_exit (void)
     lock_acquire (&t->parent->children_lock);
     //the parent could have died while acquiring the lock
     if (t->parent != NULL) {
-      struct dead_thread *dead = malloc (sizeof(struct dead_thread));
+      struct dead_thread *dead = malloc (sizeof (struct dead_thread));
 
       dead->tid = t->tid;
       dead->status = THREAD_DEAD;

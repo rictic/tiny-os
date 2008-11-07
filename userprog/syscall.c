@@ -42,6 +42,7 @@ void exit (int status) {
   printf("%s: exit(%d)\n", t->name, status);
   
   thread_exit ();
+  NOT_REACHED ();
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any 
@@ -125,12 +126,12 @@ static int read (int fd, void *buffer, unsigned size){
   if (fd == 0)
     return -1; //TODO: STDIN
     
-  localbuff = malloc (size);
   struct file *file = get_file (fd);
+  localbuff = malloc (size);
   lock_acquire (&filesys_lock);
   bytes_read = file_read (file, localbuff, size);
   lock_release (&filesys_lock);
-  validate_write (localbuff, buffer, bytes_read, 1);
+  validate_write (localbuff, buffer, bytes_read, true);
   free (localbuff);
   return bytes_read;
 }
@@ -250,6 +251,8 @@ validate_string (const char * string) {
     val = get_user(string+i);
     if (val == -1) exit(-1);
   }
+  if (string + i >= (char *)PHYS_BASE)
+    exit(-1);
 }
 
 /* Validate reading from user memory */
