@@ -115,7 +115,7 @@ execute_thread (void *file_name_)
   {
 	  /* If load failed, quit. */
 	  palloc_free_page (file_name);
-	  thread_exit ();	  
+	  exit (-1);
   }	  
 
   
