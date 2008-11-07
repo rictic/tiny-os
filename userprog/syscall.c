@@ -131,6 +131,7 @@ static int read (int fd, void *buffer, unsigned size){
   bytes_read = file_read (file, localbuff, size);
   lock_release (&filesys_lock);
   validate_write (localbuff, buffer, bytes_read);
+  free (localbuff);
   return bytes_read;
 }
 

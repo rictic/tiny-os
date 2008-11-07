@@ -161,7 +161,6 @@ execute_thread (void *file_name_)
   
   if_.esp = (size_t)argc - 4;
      
-  /* If load failed, quit. */
   palloc_free_page (file_name);
   
   /* Start the user process by simulating a return from an
