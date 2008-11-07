@@ -49,6 +49,54 @@ Peter Burns <rictic@gmail.com>
 
 ---- DATA STRUCTURES ----
 
+Added a new thread status value to distinguish thread structs from
+dead_thread structs.
+ 
+ enum thread_status {
+     THREAD_RUNNING,     /* Running thread. */
+     THREAD_READY,       /* Not running but ready to run. */
+     THREAD_BLOCKED,     /* Waiting for an event to trigger. */
+     THREAD_DYING,       /* About to be destroyed. */
++    THREAD_DEAD
+ };
+
+Limit processes to No more than 128 files  be open by a single process at once.
++#define NUM_FD 128
+
+struct thread {
++    struct list_elem child_elem; // used for keeping threads on their parents
+                                  //  list of children
++    int exit_code;               // just in case we get killed by something
+                                  //  other than exit()
+
++    struct list children;        // a list of our children, for wait()
++    struct lock children_lock;   // a lock for manipulating our children list
++    struct thread* parent;       // a pointer to our parent, for exit() to 
+                                  // replace ourselves on our parents list of
+                                  // children with a dead_thread corpse
+
++    struct file* file;                 /* To deny writes to our executable */
+
++    struct file *(files[NUM_FD]);       /* File descriptor table */
+
+}
+
+Added a new struct to keep track of dead threads on the parent's list of
+children.  This way the thread can dispose of itself as usual when it dies.
+Disposing of this is the responsibility of the parent.
+
++struct dead_thread
++  {
++    //The head of this struct must be the same as thread
++    tid_t tid;
++    enum thread_status status;
++    struct list_elem child_elem;
++    int exit_code;
++  };
++
+
+
+
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
