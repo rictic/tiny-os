@@ -103,7 +103,10 @@ struct thread
     struct lock children_lock;          /* Lock on children list */
 
     struct thread* parent;              /* The thread that created us */
-        
+
+    struct semaphore child_sema;
+    bool child_success;
+   
     struct file* file;                  /* To deny writes to our executable */
     
 #ifdef USERPROG

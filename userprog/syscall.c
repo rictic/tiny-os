@@ -248,11 +248,10 @@ validate_string (const char * string) {
   int val = -1;
   if (string == NULL) exit(-1);
   for(i = 0;val != 0;i++){
+	if (string + i >= (char *)PHYS_BASE) exit(-1);
     val = get_user(string+i);
     if (val == -1) exit(-1);
   }
-  if (string + i >= (char *)PHYS_BASE)
-    exit(-1);
 }
 
 /* Validate reading from user memory */
