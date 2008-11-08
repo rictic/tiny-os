@@ -264,12 +264,8 @@ validate_read (const char *buffer, unsigned size)
 	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
 	for (count = 0; count < size; count ++)
-	{
 		if (get_user (buffer + count) == -1)
-		{
 			exit(-1);
-		}	
-	}
 }
 
 /* Validate writing to user memory */

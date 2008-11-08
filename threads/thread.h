@@ -99,12 +99,11 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     
-    struct list children;
-    struct lock children_lock;
-    struct thread* parent;
-    
-    
-    
+    struct list children;               /* A list of our children */
+    struct lock children_lock;          /* Lock on children list */
+
+    struct thread* parent;              /* The thread that created us */
+        
     struct file* file;                  /* To deny writes to our executable */
     
 #ifdef USERPROG
