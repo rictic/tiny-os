@@ -223,8 +223,17 @@ thread_create_child (const char *name, struct file *file, int priority,
   lock_release (&cur->children_lock);
   t->parent = cur;
   t->file = file;
+  cur->child_success = true;
+
+  sema_init (&cur->child_sema, 0);
+
   /* Add to run queue. */
   thread_unblock (t);
+  
+  sema_down (&cur->child_sema);
+  
+  if (!cur->child_success)
+	  tid = TID_ERROR;
   
   return tid;
 }

@@ -90,6 +90,7 @@ consume_some_resources_and_die (int seed)
       default:
         NOT_REACHED ();
     }
+
   return 0;
 }
 
@@ -156,6 +157,8 @@ main (int argc, char *argv[])
 	msg ("child_pid is %d.", child_pid);;
         fail ("wait returned -1.");
       }
+
+	msg ("GO on.", n);
 
       /* Record the depth reached during the first run; on subsequent
          runs, fail if those runs do not match the depth achieved on the

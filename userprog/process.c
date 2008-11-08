@@ -77,7 +77,9 @@ execute_thread (void *file_name_)
 {
   char *file_name = file_name_;
   struct intr_frame if_;
+  struct thread *cur = thread_current();
   bool success;
+  bool child_success = 0;
   
   char *token, *save_ptr;
   int count = 0;
@@ -114,11 +116,11 @@ execute_thread (void *file_name_)
   if (!success) 
   {
 	  /* If load failed, quit. */
-	  palloc_free_page (file_name);
+	  //palloc_free_page (file_name);
+	  cur->parent->child_success = false;
+	  sema_up (&cur->parent->child_sema);
 	  exit (-1);
   }	  
-
-  
   
   char *argv_stack_address, *temp;
   argv_stack_address = (size_t)(PHYS_BASE - sum);
@@ -162,7 +164,8 @@ execute_thread (void *file_name_)
   if_.esp = (size_t)argc - 4;
      
   palloc_free_page (file_name);
-  
+  sema_up (&cur->parent->child_sema);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -191,7 +194,7 @@ process_wait (tid_t child_tid)
   struct dead_thread *d = NULL;
   int exit_code;
   while(true){
-    lock_acquire (&t->children_lock);
+	lock_acquire (&t->children_lock);
     lforeach(elem, &t->children){
       d = list_entry(elem, struct dead_thread, child_elem);
       if (child_tid == d->tid)
