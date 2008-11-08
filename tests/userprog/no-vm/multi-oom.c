@@ -90,7 +90,6 @@ consume_some_resources_and_die (int seed)
       default:
         NOT_REACHED ();
     }
-
   return 0;
 }
 
@@ -152,13 +151,7 @@ main (int argc, char *argv[])
       /* Else wait for child to report how deeply it was able to recurse. */
       int reached_depth = wait (child_pid);
       if (reached_depth == -1)
-      {
-	msg ("depth is %d.", n);
-	msg ("child_pid is %d.", child_pid);;
         fail ("wait returned -1.");
-      }
-
-	msg ("GO on.", n);
 
       /* Record the depth reached during the first run; on subsequent
          runs, fail if those runs do not match the depth achieved on the

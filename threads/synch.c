@@ -68,7 +68,17 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_push_back (&sema->waiters, &thread_current ()->elem);
+	  struct list_elem *thread_elem = NULL;
+	  struct thread *d = NULL;
+
+	    lforeach(thread_elem, &sema->waiters){
+	      d = list_entry(thread_elem, struct thread, elem);
+	      if (thread_current ()->tid == d->tid)
+	        break;
+	    }	  
+	    if (thread_elem == list_end(&sema->waiters)){
+	        list_push_back (&sema->waiters, &thread_current ()->elem);
+	    }
       thread_block ();
     }
   sema->value--;

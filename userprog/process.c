@@ -34,7 +34,7 @@ process_execute (const char *cmdline)
   tid_t tid;
   size_t i;
   char file_name[17];
-  
+
 
   for(i = 0; i < sizeof(file_name)-1; i++) {
     if ((cmdline[i] == ' ') || cmdline[i] == '\0')
@@ -64,8 +64,8 @@ process_execute (const char *cmdline)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create_child (file_name, file, PRI_DEFAULT, execute_thread, cmdline_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (cmdline_copy); 
+  if (tid == TID_ERROR)	 
+	  palloc_free_page (cmdline_copy);	  
   
   return tid;
 }
@@ -79,7 +79,6 @@ execute_thread (void *file_name_)
   struct intr_frame if_;
   struct thread *cur = thread_current();
   bool success;
-  bool child_success = 0;
   
   char *token, *save_ptr;
   int count = 0;
@@ -116,9 +115,7 @@ execute_thread (void *file_name_)
   if (!success) 
   {
 	  /* If load failed, quit. */
-	  //palloc_free_page (file_name);
 	  cur->parent->child_success = false;
-	  sema_up (&cur->parent->child_sema);
 	  exit (-1);
   }	  
   

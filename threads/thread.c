@@ -313,11 +313,7 @@ thread_exit (void)
   struct list_elem *elem;
   int i = 0;
   ASSERT (!intr_context ());
-
-#ifdef USERPROG
-  process_exit ();
-#endif
-  
+    
   //close all of our files
   for(i=0; i<NUM_FD; i++)
     close (i);
@@ -325,12 +321,15 @@ thread_exit (void)
   
   //Tell our children that we're dead
   lock_acquire (&t->children_lock);
-  lforeach(elem, &t->children) {
+  elem = list_begin(&t->children);
+  while(elem != list_end(&t->children)) {
     struct thread *child = list_entry(elem,struct thread, child_elem);
+    list_remove(elem);
+    elem = list_next(elem);
     if (child->status != THREAD_DEAD)
       child->parent = NULL;
     else
-      free (child); //our responsibility to free the dead_thread
+        free (child); //our responsibility to free the dead_thread
   }
   lock_release (&t->children_lock);
   
@@ -349,8 +348,10 @@ thread_exit (void)
     }
     lock_release (&t->parent->children_lock);
   }
-  
-  
+
+#ifdef USERPROG
+  process_exit ();
+#endif
   
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
