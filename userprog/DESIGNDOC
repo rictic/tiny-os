@@ -8,7 +8,9 @@
 
 >> Fill in your team name.
 
-Riku Tse <rikutse@gmail.com>
+Team Name: RR
+
+Lihuan (Riku) Xie <lxie@cs.usfca.edu>
 Peter Burns <rictic@gmail.com>
 
 
@@ -36,13 +38,41 @@ Peter Burns <rictic@gmail.com>
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+First of all, I divide each arguments, including the user program user, 
+from file_name_, and also count the number of arguments. Meanwhile, I 
+save the length of each argument, and sum up the total length of 
+arguments as well.
+
+And then, after successfully loading the user program, firstly I try to 
+insert each argument string to the top of stack. Moreover, I calculate 
+how many bytes are needed to align the argument strings. Then I use 
+the length of each argument to find out the memory address for each 
+string, and set up an argument pointer to it in the stack. Finally, 
+I have argv pointer pointing to the first argument pointer, and argc 
+for the number of arguments. They will be pushed to the stack as well.
+
+In this manner, the stack page will be never overflowed because I push 
+the elements to the top of stack first and the stack is growing down 
+towards the bottom.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+In my opinion, strtok() will save the next token value in a global data. 
+However, this is unsafe for threaded programs like kernels because 
+there is a possibility to change that global data value while running 
+strtok() during thread switch.
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+In my view, one advantage of the Unix approach is more protective when 
+the shell does this separation on user side, not on the kernel.
+Another benefit of it is more efficient because it saves the time running 
+on kernel, and also reducing the workload on kernel.
+
 
                  SYSTEM CALLS
                  ============
