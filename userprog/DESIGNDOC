@@ -105,9 +105,12 @@ struct thread {
                                   // replace ourselves on our parents list of
                                   // children with a dead_thread corpse
 
++    struct semaphore child_sema; // used to wait on our child to launch
++    bool child_success;          // stores whether the launch was successful
+
 +    struct file* file;                 /* To deny writes to our executable */
 
-+    struct file *(files[NUM_FD]);       /* File descriptor table */
++    struct file *(files[NUM_FD]);      /* File descriptor table */
 
 }
 
@@ -127,18 +130,27 @@ Disposing of this is the responsibility of the parent.
 
 
 
->> B1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
-
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+We went with the UNIX model, where file descriptors are just indexes
+into a per-process table.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+We wanted to go with the more ambitious sounding approach, reading 
+optimistically and using the page fault handler to deal with errors.
+
+However, it ended up being a rather simple and tidy solution.  We built
+three functions on top of the provided 1-byte reading and writing operations.
+Ours does validation of a null terminated array, validation of a fixed
+length array, and validating writing to a fixed length array.
+
+Using these three functions was very straightforward and gave us no problems.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -147,8 +159,23 @@ Disposing of this is the responsibility of the parent.
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+In both cases you need at least one call and at most two to pagedir_get_page()
+because in either case the memory needed could lie entirely within a page
+or it could overlap into the next one.  Of course, that assumes that you
+call pagedir_get_page() at all, which our solution doesn't.
+
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+The "wait" system call repeatedly walks the process' list of children,
+waiting until the one it's looking for is dead.  If so, it
+cleans up the dead thread struct (which is its responsibility), and
+returns the status it finds there.
+
+Exiting from a thread causes it to replace itself on its parent's list
+of children with its corpse.
+
+Synchronization is achieved with a single lock per list of children.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -164,12 +191,29 @@ Disposing of this is the responsibility of the parent.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+Our strategy was to keep things as simple as possible, though we still
+ended up with a couple of resource leaks that needed to be tracked down.
+
+First, try to validate as early as possible, and allocate resources as late
+as possible.  So we validate the stack pointer and all arguments before we
+even go to a system call function.  Then, we immediately validate any user
+arrays, pointers, and file descriptors.
+
+The one exception to this is the validate_write() function, which safely 
+writes to user memory.  This function takes a boolean option which when
+true, frees the buffer that it's reading from before calling exit()
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+We have a semaphore and a boolean on the parent thread which we use to
+track this.  The launching functions are responsible for upping the semaphore
+when the launch is complete, whether it succeeds or not, and for setting
+the boolean to reflect the success.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -178,16 +222,55 @@ Disposing of this is the responsibility of the parent.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+Most of this difficulty isn't a problem at all in our solution, and our
+simple lock on the list of children handles it just fine:
+
+If P calls wait(C) before C exits, P notices that C is still alive and
+spins (yes this is inefficient, I think an additional semaphore could
+eliminate this).  When C does finally exit, then it falls into the next
+case:
+
+If P calls wait(C) after C exits, P finds C's corpse and frees it.
+
+We ensure resources are freed properly by making it clear whose responsibility
+it is.  A thread is always responsible for cleaning up its own struct.  
+However a dead_thread struct is always the parents' responsibility.  So the 
+parent just needs to ensure that a child can't create a dead_thread object
+after it's done cleaning up all of its dead children in preparation for its
+own death.  This is done by setting the child's parent pointer to NULL and 
+it's ensured safe by the children_lock.  Now the only tricky part is that 
+children have to check that their parent pointer isn't NULL both before
+*and* after acquiring the parent's children_lock.
+
+One other special case is that we have to be careful when iterating
+through the list of children that we don't reference memory that has been
+freed already, a bug which had us pulling at our hair for about 8 hours on
+Friday.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+It seemed like it would be trickier.  However, I don't envy those
+who chose to deal with pages directly.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+The advantages include multiple processes being able to read from
+different places in a single file at the same time, little information
+about our implementation is leaked to user programs, UNIX file closing
+semantics (it wouldn't be hard to get replacement of stdin and stdout
+working), and good speed characteristics (no walking lists e.g.).
+
+On the other hand, our solution limits a process to a static maximum
+number of open files.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We didn't see any reason to change this yet.
 
                SURVEY QUESTIONS
                ================
@@ -201,12 +284,30 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+This assignment was at a very good difficulty level for me.  Very pleased
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+Yeah, learning how to implement system calls and how arguments are put onto
+the stack before a program has run filled in a lot of details for me.
+
+I'm also intrigued by the details of virtual memory that this assignment
+hints at; I'm looking forward to the next assignment.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+
+The multi-oom tests *everything*, don't overly limit your search for causes.
+
+More tests are always welcome, and the timout for most tests can be safely
+dropped to be much much lower (5 seconds), which makes running the test suite
+early on much nicer.
+
+Maybe you could give out bonus points to students who come up with good 
+additional tests?  Coming up with tests is a good skill to cultivate and
+reward I think.
 
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
