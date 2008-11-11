@@ -40,7 +40,6 @@ void exit (int status) {
   struct thread *t = thread_current ();
   t->exit_code = status;
   printf("%s: exit(%d)\n", t->name, status);
-  
   thread_exit ();
   NOT_REACHED ();
 }
