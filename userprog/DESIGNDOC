@@ -284,30 +284,38 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
-This assignment was at a very good difficulty level for me.  Very pleased
+Peter: This assignment was at a very good difficulty level for me. 
+Very pleased.
+
+Riku: Great exercise for giving me a deeper look into system call on kernel. 
+Level is acceptable for me, not too much time consuming.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
 
-Yeah, learning how to implement system calls and how arguments are put onto
-the stack before a program has run filled in a lot of details for me.
-
+Peter: Yeah, learning how to implement system calls and how arguments are 
+put onto the stack before a program has run filled in a lot of details for me.
 I'm also intrigued by the details of virtual memory that this assignment
 hints at; I'm looking forward to the next assignment.
+
+Riku: A good chance for me to merge what I learnt from other courses. (I am
+also studying programming OS by assembly language on Microprocessor course.)
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
-The multi-oom tests *everything*, don't overly limit your search for causes.
-
+Peter: The multi-oom tests *everything*, don't overly limit your search for 
+causes.
 More tests are always welcome, and the timout for most tests can be safely
 dropped to be much much lower (5 seconds), which makes running the test suite
 early on much nicer.
-
 Maybe you could give out bonus points to students who come up with good 
 additional tests?  Coming up with tests is a good skill to cultivate and
 reward I think.
+
+Riku: Agreed with Peter. I suggest demostrating to students how the multi-oom 
+test program actually runs in pintos, and other experiences from previous students.
 
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
