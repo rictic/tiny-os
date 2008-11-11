@@ -103,8 +103,6 @@ execute_thread (void *file_name_)
 	  sum += arg_length[i];
   }	  
   
-  
-  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -116,9 +114,12 @@ execute_thread (void *file_name_)
   {
 	  /* If load failed, quit. */
 	  cur->parent->child_success = false;
+	  sema_up (&cur->parent->child_sema);
 	  exit (-1);
   }	  
   
+  sema_up (&cur->parent->child_sema);
+
   char *argv_stack_address, *temp;
   argv_stack_address = (size_t)(PHYS_BASE - sum);
   temp = argv_stack_address;
@@ -161,7 +162,6 @@ execute_thread (void *file_name_)
   if_.esp = (size_t)argc - 4;
      
   palloc_free_page (file_name);
-  sema_up (&cur->parent->child_sema);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

@@ -40,8 +40,6 @@ void exit (int status) {
   struct thread *t = thread_current ();
   t->exit_code = status;
   printf("%s: exit(%d)\n", t->name, status);
-  if (t->parent->child_success == false)
-	  sema_up (&t->parent->child_sema);
   thread_exit ();
   NOT_REACHED ();
 }
@@ -264,12 +262,8 @@ validate_read (const char *buffer, unsigned size)
 	if (buffer + size >= (char *)PHYS_BASE)
 		exit(-1);
 	for (count = 0; count < size; count ++)
-	{
 		if (get_user (buffer + count) == -1)
-		{
 			exit(-1);
-		}	
-	}
 }
 
 /* Validate writing to user memory */
