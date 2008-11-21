@@ -21,3 +21,4 @@ examples/recursor
 examples/rm
 examples/shell
 *.dsk
+*~
