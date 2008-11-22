@@ -17,6 +17,7 @@
 #endif
 #ifdef VM
 #include "vm/frame.h"
+#include "vm/page.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -181,6 +182,7 @@ mk_thread (const char *name, int priority,
   /* Stack frame for switch_threads(). */
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
+  
   return t;
 }
 
@@ -209,6 +211,7 @@ thread_create (const char *name, int priority,
   tid_t tid = t->tid;
   /* Add to run queue. */
   thread_unblock (t);
+  init_supplemental_pagetable (&t->sup_pagetable);
 
   return tid;
 }
@@ -233,7 +236,8 @@ thread_create_child (const char *name, struct file *file, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  
+  init_supplemental_pagetable (&t->sup_pagetable);
+
   sema_down (&cur->child_sema);
   
   if (!cur->child_success)

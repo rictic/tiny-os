@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+#include "vm/page.h"
 
 #define NUM_FD 128
 
@@ -113,6 +114,8 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
+
+    struct hash sup_pagetable;          /* Supplemental page table */
 
     struct file *(files[NUM_FD]);       /* File descriptor table */
     
