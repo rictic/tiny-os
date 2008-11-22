@@ -24,7 +24,9 @@ struct exec_page {
   struct hash_elem elem;
   uint32_t virtual_page;
   struct file *elf_file;
+  size_t offset; //number of bytes into the file to start
   size_t zero_after; //after this offset, the rest should be zeros
+  bool writable;
 };
 
 struct file_page {

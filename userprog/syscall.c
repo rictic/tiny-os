@@ -22,7 +22,7 @@ inline static struct file* get_file(int fd) {
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void validate_read (const char *buffer, unsigned size);
-static void validate_write (const char *from, char *user_to, unsigned size, bool malloc_buffer);
+static void validate_write (char *from, char *user_to, unsigned size, bool malloc_buffer);
 static void validate_string (const char *string);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
@@ -221,18 +221,18 @@ syscall_handler (struct intr_frame *f)
 
   switch (sys_call){
     case SYS_HALT    : halt (); break;
-    case SYS_EXIT    : validate_read (args, 1); exit (args[0]); break;
-    case SYS_EXEC    : validate_read (args, 1); return_val = exec ((char *)args[0]); break;
-    case SYS_WAIT    : validate_read (args, 1); return_val = wait (args[0]); break; 
-    case SYS_CREATE  : validate_read (args, 2); return_val = create ((char *)args[0], args[1]); break;
-    case SYS_REMOVE  : validate_read (args, 1); return_val = remove ((char *)args[0]); break;
-    case SYS_OPEN    : validate_read (args, 1); return_val = open ((char *)args[0]); break;
-    case SYS_FILESIZE: validate_read (args, 1); return_val = filesize (args[0]); break;
-    case SYS_READ    : validate_read (args, 3); return_val = read (args[0], (char *)args[1], args[2]); break;
-    case SYS_WRITE   : validate_read (args, 3); return_val = write (args[0], (char *)args[1], args[2]); break;
-    case SYS_SEEK    : validate_read (args, 2); seek (args[0], args[1]); break; 
-    case SYS_TELL    : validate_read (args, 1); return_val = tell (args[0]); break; 
-    case SYS_CLOSE   : validate_read (args, 1); close (args[0]); break;
+    case SYS_EXIT    : validate_read ((char *)args, 1); exit (args[0]); break;
+    case SYS_EXEC    : validate_read ((char *)args, 1); return_val = exec ((char *)args[0]); break;
+    case SYS_WAIT    : validate_read ((char *)args, 1); return_val = wait (args[0]); break; 
+    case SYS_CREATE  : validate_read ((char *)args, 2); return_val = create ((char *)args[0], args[1]); break;
+    case SYS_REMOVE  : validate_read ((char *)args, 1); return_val = remove ((char *)args[0]); break;
+    case SYS_OPEN    : validate_read ((char *)args, 1); return_val = open ((char *)args[0]); break;
+    case SYS_FILESIZE: validate_read ((char *)args, 1); return_val = filesize (args[0]); break;
+    case SYS_READ    : validate_read ((char *)args, 3); return_val = read (args[0], (char *)args[1], args[2]); break;
+    case SYS_WRITE   : validate_read ((char *)args, 3); return_val = write (args[0], (char *)args[1], args[2]); break;
+    case SYS_SEEK    : validate_read ((char *)args, 2); seek (args[0], args[1]); break; 
+    case SYS_TELL    : validate_read ((char *)args, 1); return_val = tell (args[0]); break; 
+    case SYS_CLOSE   : validate_read ((char *)args, 1); close (args[0]); break;
     default: exit(-1);
   }
   
@@ -268,7 +268,7 @@ validate_read (const char *buffer, unsigned size)
 
 /* Validate writing to user memory */
 static void 
-validate_write (const char *from, char *user_to, unsigned size, bool malloc_buffer)
+validate_write (char *from, char *user_to, unsigned size, bool malloc_buffer)
 {
 	unsigned count;
 	

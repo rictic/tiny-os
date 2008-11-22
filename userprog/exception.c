@@ -1,9 +1,14 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/palloc.h"
+#include "threads/vaddr.h"
+#include "vm/frame.h"
+#include "userprog/process.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -126,7 +131,8 @@ page_fault (struct intr_frame *f)
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
-
+  struct special_page_elem *gen_page;
+  uint32_t fault_page;
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -135,7 +141,7 @@ page_fault (struct intr_frame *f)
      [IA32-v3a] 5.15 "Interrupt 14--Page Fault Exception
      (#PF)". */
   asm ("movl %%cr2, %0" : "=r" (fault_addr));
-
+  fault_page = 0xfffff000 & ((uint32_t) fault_addr);
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
@@ -151,19 +157,62 @@ page_fault (struct intr_frame *f)
   switch (f->cs)
 	{
 	case SEL_KCSEG:
-		f->eip = f->eax;
+		f->eip = (void *)f->eax;
 		f->eax = -1;
-		break;
+  	break;
 	default:
-		  /* To implement virtual memory, delete the rest of the function
-		     body, and replace it with code that brings in the page to
-		     which fault_addr refers. */
-		  printf ("Page fault at %p: %s error %s page in %s context.\n",
-		          fault_addr,
-		          not_present ? "not present" : "rights violation",
-		          write ? "writing" : "reading",
-		          user ? "user" : "kernel");
-		  kill (f);	
+    gen_page = find_lazy_page (fault_page);
+	  if (gen_page == NULL) {
+	    printf ("Page fault at %p: %s error %s page in %s context.\n",
+  	          fault_addr,
+  	          not_present ? "not present" : "rights violation",
+  	          write ? "writing" : "reading",
+  	          user ? "user" : "kernel");
+  	  kill (f);	
+	  }
+	  
+	  /* Get a page of memory. */
+    uint8_t *kpage = ft_get_page (PAL_USER);
+    if (kpage == NULL){
+      printf ("Unable to get a page of memory to handle a page fault\n");
+      kill (f);
+    }
+    bool writable = false;
+	  switch (gen_page->type) {
+    case EXEC:
+      user = user; //why is this line needed?  Crazy C syntax
+      struct exec_page *exec_page = (struct exec_page*) gen_page;
+      
+      /* Load this page. */
+      if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
+          != (int) exec_page->zero_after) {
+        palloc_free_page (kpage);
+        printf("Unable to read in exec file in page fault handler\n");
+        kill (f);
+      }
+      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
+      writable = exec_page->writable;
+      break;
+    case FILE:
+      printf("Fetching memory for an mmaped file isn't yet implemented\n");
+      kill (f);
+      break;
+    case SWAP:
+      printf("Fetching memory from swap isn't yet implemented\n");
+      kill(f);
+      break;
+    case ZERO:
+      printf("Fetching memory to be zeroed out isn't yet implemented\n");
+      kill (f);
+      break;
+	  }
+	  
+    /* Add the page to the process's address space. */
+    if (!install_page (fault_page, kpage, writable)) {
+      palloc_free_page (kpage);
+      printf("Unable to install page into user's space in response to page fault\n");
+      kill (f);
+    }
 	}
 }
 
