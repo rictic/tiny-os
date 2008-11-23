@@ -18,6 +18,7 @@
 #ifdef VM
 #include "vm/frame.h"
 #include "vm/page.h"
+#include "vm/swap.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -93,6 +94,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   ft_init ();
+  swap_init();
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();

@@ -1,19 +1,20 @@
 #include <debug.h>
 #include "vm/frame.h"
 #include "threads/synch.h"
-#include "threads/palloc.h"
 #include "threads/malloc.h"
 
 /* List of used frame. */
 static struct list frame_list;
+
+/* Lock for the frame table. */
 static struct lock frame_lock;
 
 /* Initialize the frame table. */
 void
 ft_init (void) 
 {
-  lock_init (&frame_lock);
   list_init (&frame_list);
+  lock_init (&frame_lock);
 }
 
 /* Get a user page from user pool, and add to our frame table if successful. */
