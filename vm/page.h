@@ -41,7 +41,7 @@ struct swap_page {
   enum special_page type;
   struct hash_elem elem;
   uint32_t virtual_page;
-  size_t offset; //number of pages into the swap
+  disk_sector_t sector; //sector where the disk starts
 };
 
 struct zero_page {

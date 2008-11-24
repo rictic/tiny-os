@@ -8,6 +8,7 @@
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "userprog/process.h"
 
 /* Number of page faults processed. */
@@ -198,12 +199,17 @@ page_fault (struct intr_frame *f)
       kill (f);
       break;
     case SWAP:
-      printf("Fetching memory from swap isn't yet implemented\n");
-      kill(f);
+      user = user; // stupid c parser
+      struct swap_page *swap_page = (struct swap_page*) swap_page;
+      struct swap_slot slot;
+      slot.tid = thread_current ()->tid;
+      slot.start = swap_page->sector;
+      
+      swap_slot_read (kpage, &slot);
+      writable = true;
       break;
     case ZERO:
-      printf("Fetching memory to be zeroed out isn't yet implemented\n");
-      kill (f);
+      memset (kpage, 0, PGSIZE);
       break;
 	  }
 	  
