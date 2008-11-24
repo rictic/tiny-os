@@ -169,6 +169,8 @@ page_fault (struct intr_frame *f)
   	          not_present ? "not present" : "rights violation",
   	          write ? "writing" : "reading",
   	          user ? "user" : "kernel");
+      printf ("Supplemental page table contents:\n");
+      print_supplemental_page_table ();
   	  kill (f);	
 	  }
 	  
@@ -200,7 +202,7 @@ page_fault (struct intr_frame *f)
       break;
     case SWAP:
       user = user; // stupid c parser
-      struct swap_page *swap_page = (struct swap_page*) swap_page;
+      struct swap_page *swap_page = (struct swap_page*) gen_page;
       struct swap_slot slot;
       slot.tid = thread_current ()->tid;
       slot.start = swap_page->sector;
