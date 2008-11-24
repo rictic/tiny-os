@@ -7,6 +7,7 @@
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 
+
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
@@ -38,6 +39,11 @@ struct inode
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
   };
+
+void
+print_inode_location(const struct inode *inode) {
+  printf("%d", inode->data.start);
+}
 
 /* Returns the disk sector that contains byte offset POS within
    INODE.
