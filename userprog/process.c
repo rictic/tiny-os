@@ -165,6 +165,9 @@ execute_thread (void *file_name_)
      
   palloc_free_page (file_name);
 
+  printf ("Supplemental page table at program `%s' start:\n", cur->name);
+  print_supplemental_page_table ();
+  printf ("-------------\n");
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -227,6 +230,9 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  printf ("Supplemental page table at program `%s' exit:\n", cur->name);
+  print_supplemental_page_table ();
+  printf ("-------------\n");
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
