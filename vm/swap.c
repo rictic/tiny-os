@@ -23,7 +23,6 @@ swap_init (void)
 {
   list_init (&free_swap_list);
   lock_init (&swap_lock);
-  void *aux;
   
   swap_disk = disk_get (1, 1);
   
@@ -32,7 +31,7 @@ swap_init (void)
   free_ss->size = disk_size(swap_disk);
 
   lock_acquire (&swap_lock);
-  list_insert_ordered(&free_swap_list, &free_ss->free_swap_elem, (list_less_func *)swap_slot_less, aux);
+  list_insert_ordered(&free_swap_list, &free_ss->free_swap_elem, (list_less_func *)swap_slot_less, NULL);
   lock_release (&swap_lock);
 }
 
@@ -120,14 +119,13 @@ alloc_swap_slot (void)
 static void
 free_swap_slot (struct swap_slot *ss)
 {
-	  void *aux;
 	  struct free_swap_slot *free_ss = malloc (sizeof (struct free_swap_slot));
 	  free_ss->start = ss->start;
 	  free_ss->size = SECTORS_PER_FRAME;
 
 	  lock_acquire (&swap_lock);
 	  
-	  list_insert_ordered(&free_swap_list, &free_ss->free_swap_elem, (list_less_func *)swap_slot_less, aux);
+	  list_insert_ordered(&free_swap_list, &free_ss->free_swap_elem, (list_less_func *)swap_slot_less, NULL);
 	  
 	  struct free_swap_slot *temp_free_ss;
 	  struct list_elem *temp_elem = list_next(&free_ss->free_swap_elem);
@@ -161,7 +159,7 @@ free_swap_slot (struct swap_slot *ss)
 }
 
 /* swap slot comparison function */
-static bool swap_slot_less(struct list_elem *a, struct list_elem *b, void *aux)
+static bool swap_slot_less(struct list_elem *a, struct list_elem *b, void *aux UNUSED)
 {
     bool rv = false;
     struct free_swap_slot *fss_a, *fss_b;
