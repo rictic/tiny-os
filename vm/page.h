@@ -56,7 +56,7 @@ struct zero_page {
 };
 
 void init_supplemental_pagetable (struct hash *sup_pagetable);
-void add_lazy_page (struct special_page_elem *page);
+struct special_page_elem * add_lazy_page (struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (uint32_t ptr);
 void print_supplemental_page_table (void);
 #endif /*VM_PAGE_H_*/

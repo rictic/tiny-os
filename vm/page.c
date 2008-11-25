@@ -23,9 +23,11 @@ init_supplemental_pagetable (struct hash *sup_pagetable) {
   hash_init (sup_pagetable, page_hash, page_key_less, NULL);
 }
 
-void
+struct special_page_elem *
 add_lazy_page (struct special_page_elem *page) {
-  hash_insert (&thread_current ()->sup_pagetable, &page->elem);
+  struct hash_elem *elem = hash_insert (&thread_current ()->sup_pagetable, &page->elem);
+  if (elem == NULL) return NULL;
+  return hash_entry(elem, struct special_page_elem, elem);
 }
 
 struct special_page_elem *
