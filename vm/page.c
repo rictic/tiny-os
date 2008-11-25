@@ -38,11 +38,11 @@ find_lazy_page (uint32_t ptr) {
 }
 
 static void noop(void);
-static void noop() {} inline
-static void print_file(struct file *file) {
+static inline void noop() {} 
+static inline void print_file(struct file *file) {
   printf ("file at sector ");
   print_inode_location (file->inode);
-} inline
+}
 static void
 print_page_entry (struct hash_elem *e, void *aux UNUSED) {
   struct special_page_elem *gen_page = hash_entry(e, struct special_page_elem, elem);
