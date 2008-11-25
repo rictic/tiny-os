@@ -46,7 +46,7 @@ static inline void print_file(struct file *file) {
 static void
 print_page_entry (struct hash_elem *e, void *aux UNUSED) {
   struct special_page_elem *gen_page = hash_entry(e, struct special_page_elem, elem);
-  printf("%d page mapped to 0x%08x", gen_page->type, gen_page->virtual_page);
+  printf("%s page mapped to 0x%08x", special_page_name(gen_page->type), gen_page->virtual_page);
   switch (gen_page->type) {
   case EXEC:
     noop();

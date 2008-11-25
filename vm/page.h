@@ -9,11 +9,10 @@ enum special_page {
   SWAP,
   ZERO
 };
-// const char * special_page_name(const enum special_page);
-// static const char *(page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO"};
-// const char * special_page_name(const enum special_page page_num) {
-//   return page_names[page_num];
-// } inline
+static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO"};
+inline static const  char * special_page_name(const enum special_page page_num) {
+  return special_page_names[page_num];
+}
 
   
 //this just defines the head of the struct which all special
