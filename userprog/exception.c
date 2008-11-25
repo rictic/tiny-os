@@ -160,65 +160,67 @@ page_fault (struct intr_frame *f)
 	case SEL_KCSEG:
 		f->eip = (void *)f->eax;
 		f->eax = -1;
-  	break;
+		break;
 	default:
-    gen_page = find_lazy_page (fault_page);
-	  if (gen_page == NULL) {
-	    printf ("Page fault at %p: %s error %s page in %s context.\n",
-  	          fault_addr,
-  	          not_present ? "not present" : "rights violation",
-  	          write ? "writing" : "reading",
-  	          user ? "user" : "kernel");
-  	  kill (f);	
-	  }
+	    gen_page = find_lazy_page (fault_page);
+	    if (gen_page == NULL) 
+	    {
+		    printf ("Page fault at %p: %s error %s page in %s context.\n",
+	  	          fault_addr,
+	  	          not_present ? "not present" : "rights violation",
+	  	          write ? "writing" : "reading",
+	  	          user ? "user" : "kernel");
+	  	  	kill (f);	
+	    }
 	  
-	  /* Get a page of memory. */
-    uint8_t *kpage = ft_get_page (PAL_USER);
-    if (kpage == NULL){
-      printf ("Unable to get a page of memory to handle a page fault\n");
-      kill (f);
-    }
-    bool writable = false;
-	  switch (gen_page->type) {
-    case EXEC:
-      user = user; //why is this line needed?  Crazy C syntax
-      struct exec_page *exec_page = (struct exec_page*) gen_page;
-      
-      /* Load this page. */
-      if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
-          != (int) exec_page->zero_after) {
-        palloc_free_page (kpage);
-        printf("Unable to read in exec file in page fault handler\n");
-        kill (f);
-      }
-      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
-      writable = exec_page->writable;
-      break;
-    case FILE:
-      printf("Fetching memory for an mmaped file isn't yet implemented\n");
-      kill (f);
-      break;
-    case SWAP:
-      user = user; // stupid c parser
-      struct swap_page *swap_page = (struct swap_page*) swap_page;
-      struct swap_slot slot;
-      slot.tid = thread_current ()->tid;
-      slot.start = swap_page->sector;
-      
-      swap_slot_read (kpage, &slot);
-      writable = true;
-      break;
-    case ZERO:
-      memset (kpage, 0, PGSIZE);
-      break;
-	  }
-	  
-    /* Add the page to the process's address space. */
-    if (!install_page (fault_page, kpage, writable)) {
-      palloc_free_page (kpage);
-      printf("Unable to install page into user's space in response to page fault\n");
-      kill (f);
-    }
+	    /* Get a page of memory. */
+	    uint8_t *kpage = ft_get_page (PAL_USER);
+	    if (kpage == NULL){
+	      printf ("Unable to get a page of memory to handle a page fault\n");
+	      kill (f);
+	    }
+	    bool writable = false;
+		switch (gen_page->type) 
+		{
+		    case EXEC:
+		      user = user; //why is this line needed?  Crazy C syntax
+		      struct exec_page *exec_page = (struct exec_page*) gen_page;
+		      
+		      /* Load this page. */
+		      if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
+		          != (int) exec_page->zero_after) {
+		        palloc_free_page (kpage);
+		        printf("Unable to read in exec file in page fault handler\n");
+		        kill (f);
+		      }
+		      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
+		      writable = exec_page->writable;
+		      break;
+		    case FILE:
+		      printf("Fetching memory for an mmaped file isn't yet implemented\n");
+		      kill (f);
+		      break;
+		    case SWAP:
+		      user = user; // stupid c parser
+		      struct swap_page *swap_page = (struct swap_page*) gen_page;
+		      struct swap_slot slot;
+		      slot.tid = thread_current ()->tid;
+		      slot.start = swap_page->sector;
+		      
+		      swap_slot_read (kpage, &slot);
+		      writable = true;
+		      break;
+		    case ZERO:
+		      memset (kpage, 0, PGSIZE);
+		      break;
+		}
+		  
+	    /* Add the page to the process's address space. */
+	    if (!install_page (fault_page, kpage, writable)) {
+	      palloc_free_page (kpage);
+	      printf("Unable to install page into user's space in response to page fault\n");
+	      kill (f);
+	    }
 	}
 }
 
