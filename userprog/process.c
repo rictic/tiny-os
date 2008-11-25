@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 #include "vm/frame.h"
+#include "threads/malloc.h"
 
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -28,7 +29,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-
+tid_t
 process_execute (const char *cmdline) 
 {
   char *cmdline_copy;
@@ -122,18 +123,18 @@ execute_thread (void *file_name_)
   sema_up (&cur->parent->child_sema);
 
   char *argv_stack_address, *temp;
-  argv_stack_address = (size_t)(PHYS_BASE - sum);
+  argv_stack_address = (char *)(PHYS_BASE - sum);
   temp = argv_stack_address;
   for (i = 0; i < count; i++)
   {
 	  strlcpy (temp, argv_count[i], arg_length[i]);
-	  temp = (size_t)temp + arg_length[i];	  
+	  temp = (char *)temp + arg_length[i];	  
   }	  
   
   int num_word_align = 4 - sum % 4;
   
   uint8_t *word_align;
-  word_align = (size_t)argv_stack_address - num_word_align;
+  word_align = (uint8_t *)argv_stack_address - num_word_align;
   
   for (i =0; i < num_word_align; i++)
   {
@@ -141,26 +142,26 @@ execute_thread (void *file_name_)
   } 	 
   
   char **argvs, **temp2;
-  argvs = (size_t)word_align - (4 * (count + 1));
+  argvs = (char**)((size_t)word_align - (4 * (count + 1)));
   temp2 = argvs;
   size_t argvs_offset = (size_t)argv_stack_address;
   for (i = 0; i < count; i++)
   {
-	  *temp2 = argvs_offset;
+	  *temp2 = (char *)argvs_offset;
 	  argvs_offset += arg_length[i];
-	  temp2 = (size_t)temp2 + 4;
+	  temp2 = (char **)((size_t)temp2 + 4);
   }
   *temp2 = 0;
   
   char ***argv;
-  argv = (size_t)argvs -4;
+  argv = (char ***)((size_t)argvs -4);
   *argv = argvs;
   
   int *argc;
-  argc = (size_t)argv - 4;
+  argc = (int *)((size_t)argv - 4);
   *argc = count;
   
-  if_.esp = (size_t)argc - 4;
+  if_.esp = (void *)argc - 4;
      
   palloc_free_page (file_name);
 
@@ -450,8 +451,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 }
 
 /* load() helpers. */
-
-static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Checks whether PHDR describes a valid, loadable segment in
    FILE and returns true if so, false otherwise. */

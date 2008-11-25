@@ -20,6 +20,8 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 #endif
+#include "threads/malloc.h"
+
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -93,7 +95,6 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
-  ft_init ();
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();

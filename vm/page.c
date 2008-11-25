@@ -37,6 +37,7 @@ find_lazy_page (uint32_t ptr) {
   return hash_entry(elem, struct special_page_elem, elem);
 }
 
+static void noop(void);
 static void noop() {} inline
 static void print_file(struct file *file) {
   printf ("file at sector ");
@@ -52,7 +53,7 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
     struct exec_page *exec_page = (struct exec_page*) gen_page;
     printf(" from file ");
     print_file(exec_page->elf_file);
-    printf(" starting at offset %u, but zeroing after %u", exec_page->offset, exec_page->zero_after);
+    printf(" starting at offset %u, but zeroing after %u", (unsigned)exec_page->offset, (unsigned)exec_page->zero_after);
   case FILE:
     noop();
 //     struct file_page *file_page = (struct file_page*) gen_page;
