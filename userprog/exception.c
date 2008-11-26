@@ -171,8 +171,8 @@ page_fault (struct intr_frame *f)
   	          not_present ? "not present" : "rights violation",
   	          write ? "writing" : "reading",
   	          user ? "user" : "kernel");
-      printf ("Supplemental page table contents:\n");
-      print_supplemental_page_table ();
+//       printf ("Supplemental page table contents:\n");
+//       print_supplemental_page_table ();
   	  kill (f);	
 	  }
 	  
@@ -200,8 +200,19 @@ page_fault (struct intr_frame *f)
       writable = exec_page->writable;
       break;
     case FILE:
-      printf("Fetching memory for an mmaped file isn't yet implemented\n");
-      kill (f);
+      user = user;
+      struct file_page *file_page = (struct file_page*) gen_page;
+      file_seek (file_page->source_file, file_page->offset);
+      if (file_read (file_page->source_file, kpage, file_page->zero_after)
+          != (int) file_page->zero_after) {
+        palloc_free_page (kpage);
+        printf ("Unable to read in mmaped file in page fault handler\n");
+        kill (f);  
+      }
+      //if we really need to zero after, then we should just use one handler
+      // for both exec files and mmaped files
+      memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
+      writable = true;
       break;
     case SWAP:
       user = user; // stupid c parser
