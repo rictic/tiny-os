@@ -199,6 +199,59 @@ void close (int fd){
   fdtable[fd] = NULL;
 }
 
+/* Mapping the file in fd file descriptor to virtual address addr.
+   Returning the unique mapid_t if successful, otherwise returning -1. */
+mapid_t mmap (int fd, void *addr)
+{
+	mapid_t mapping = -1;
+	struct file *file = get_file (fd);
+	
+	if (fd < 2) return mapping;
+	if (file == NULL) return mapping;
+
+	uint32_t read_bytes = file_length(file);
+	if (read_bytes == 0) return mapping;
+
+	while (read_bytes > 0) 
+    {
+      /* Calculate how to fill this page.
+         We will read PAGE_READ_BYTES bytes from FILE
+         and zero the final PAGE_ZERO_BYTES bytes. */
+      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+      size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+      /* Get a page of memory. */
+      uint8_t *kpage = ft_get_page (PAL_USER);
+      if (kpage == NULL)
+        return false;
+
+      /* Load this page. */
+      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+        {
+          palloc_free_page (kpage);
+          return false; 
+        }
+      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+
+      /* Add the page to the process's address space. */
+      if (!install_page (upage, kpage, writable)) 
+        {
+          palloc_free_page (kpage);
+          return false; 
+        }
+
+      /* Advance. */
+      read_bytes -= page_read_bytes;
+      upage += PGSIZE;
+    }
+
+}
+
+/* Unmaps the mapping designated by mapid_t mapping. */
+void munmap (mapid_t mapping)
+{
+	
+}
 
 static void syscall_handler (struct intr_frame *);
 
@@ -233,6 +286,11 @@ syscall_handler (struct intr_frame *f)
     case SYS_SEEK    : validate_read ((char *)args, 2); seek (args[0], args[1]); break; 
     case SYS_TELL    : validate_read ((char *)args, 1); return_val = tell (args[0]); break; 
     case SYS_CLOSE   : validate_read ((char *)args, 1); close (args[0]); break;
+    
+    /* Project 3 and optionally project 4. */
+    case SYS_MMAP    : validate_read ((char *)args, 2); return_val = mmap (args[0], args[1]); break; 
+    case SYS_MUNMAP  : validate_read ((char *)args, 1); munmap (args[0]); break; 
+
     default: exit(-1);
   }
   
