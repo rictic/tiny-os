@@ -10,6 +10,8 @@
 #include "vm/frame.h"
 #include "vm/swap.h"
 #include "userprog/process.h"
+#include "userprog/syscall.h"
+#include "userprog/pagedir.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -187,6 +189,7 @@ page_fault (struct intr_frame *f)
       struct exec_page *exec_page = (struct exec_page*) gen_page;
       
       /* Load this page. */
+      file_seek (exec_page->elf_file, exec_page->offset);
       if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
           != (int) exec_page->zero_after) {
         palloc_free_page (kpage);
@@ -216,7 +219,7 @@ page_fault (struct intr_frame *f)
 	  }
 	  
     /* Add the page to the process's address space. */
-    if (!install_page (fault_page, kpage, writable)) {
+    if (!install_page ((void *)fault_page, kpage, writable)) {
       palloc_free_page (kpage);
       printf("Unable to install page into user's space in response to page fault\n");
       kill (f);

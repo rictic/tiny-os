@@ -9,11 +9,10 @@ enum special_page {
   SWAP,
   ZERO
 };
-// const char * special_page_name(const enum special_page);
-// static const char *(page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO"};
-// const char * special_page_name(const enum special_page page_num) {
-//   return page_names[page_num];
-// } inline
+static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO"};
+inline static const  char * special_page_name(const enum special_page page_num) {
+  return special_page_names[page_num];
+}
 
   
 //this just defines the head of the struct which all special
@@ -57,7 +56,7 @@ struct zero_page {
 };
 
 void init_supplemental_pagetable (struct hash *sup_pagetable);
-void add_lazy_page (struct special_page_elem *page);
+struct special_page_elem * add_lazy_page (struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (uint32_t ptr);
 void print_supplemental_page_table (void);
 #endif /*VM_PAGE_H_*/
