@@ -38,8 +38,10 @@ struct file_page {
   enum special_page type;
   struct hash_elem elem;
   uint32_t virtual_page;
-  struct file source_file;
+  struct file *source_file;
   size_t offset; //number of pages into the file
+  size_t zero_after; //after this offset, the rest should be zeros
+  int mapping;
 };
 
 struct swap_page {
@@ -58,5 +60,7 @@ struct zero_page {
 void init_supplemental_pagetable (struct hash *sup_pagetable);
 struct special_page_elem * add_lazy_page (struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (uint32_t ptr);
+bool validate_free_page (void *upage, uint32_t read_bytes);
+
 void print_supplemental_page_table (void);
 #endif /*VM_PAGE_H_*/

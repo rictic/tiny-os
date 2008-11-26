@@ -200,55 +200,72 @@ void close (int fd){
 }
 
 /* Mapping the file in fd file descriptor to virtual address addr.
-   Returning the unique mapid_t if successful, otherwise returning -1. */
-mapid_t mmap (int fd, void *addr)
+   Returning the unique int if successful, otherwise returning -1. */
+static int mmap (int fd, void *addr)
 {
-	mapid_t mapping = -1;
+	int mapping = -1;
+	
+	/* File descriptors 0 and 1 are not mappable. */
+	if (fd < 2) return mapping;
+	
 	struct file *file = get_file (fd);
 	
-	if (fd < 2) return mapping;
+	/* Failed if file is NULL. */
 	if (file == NULL) return mapping;
 
+	/* Failed if file is 0 length, or virtual address addr is in page 0, or addr is not page-aligned. */
 	uint32_t read_bytes = file_length(file);
-	if (read_bytes == 0) return mapping;
-
+	if (read_bytes == 0 || addr < PGSIZE || (((uint32_t)addr) & 0x00000fff) != 0) return mapping;
+	
+	/* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
+	   (Stack validation not implimented yet!) */
+	if (!validate_free_page (addr, read_bytes)) return mapping;
+	/*size_t num_of_pages = read_bytes / PGSIZE;
+	if (read_bytes % PGSIZE != 0)
+		num_of_pages +=1;
+	int i;
+	uint32_t ptr = addr;
+	struct special_page_elem *spe;
+	for(i = 0; i < num_of_pages; i++)
+	{
+		spe = find_lazy_page(ptr);
+		if (spe != NULL)
+			return mapping; // This page has been already mapped.
+		ptr += PGSIZE;
+	}*/
+	
+	/* Otherwise, fulfill the file mapping. */
+	off_t ofs = 0;
+	mapping = addr; // Use the virtual address as mapping id.
 	while (read_bytes > 0) 
-    {
-      /* Calculate how to fill this page.
-         We will read PAGE_READ_BYTES bytes from FILE
-         and zero the final PAGE_ZERO_BYTES bytes. */
-      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-      size_t page_zero_bytes = PGSIZE - page_read_bytes;
+    {		
+		/* Calculate how to fill this page.
+		We will read PAGE_READ_BYTES bytes from FILE
+		and zero the final PAGE_ZERO_BYTES bytes. */
+		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+		
+		struct file_page *file_page = malloc (sizeof (struct file_page));
+		file_page->type = FILE;
+		file_page->virtual_page = (uint32_t)addr;
+		file_page->source_file = file;
+		file_page->offset = ofs;
+		file_page->zero_after = page_read_bytes;
+		file_page->mapping = addr;
+	    add_lazy_page (file_page);
 
-      /* Get a page of memory. */
-      uint8_t *kpage = ft_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
-
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-
-      /* Advance. */
-      read_bytes -= page_read_bytes;
-      upage += PGSIZE;
+		/* Advance. */
+		read_bytes -= page_read_bytes;
+		ofs += PGSIZE;
+		addr += PGSIZE;
     }
-
+	file_seek (file, ofs);
+	
+	return mapping;
 }
 
-/* Unmaps the mapping designated by mapid_t mapping. */
-void munmap (mapid_t mapping)
+/* Unmaps the mapping designated by int mapping. */
+static void munmap (int mapping)
 {
 	
 }

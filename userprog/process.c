@@ -516,31 +516,49 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-  while (read_bytes > 0 || zero_bytes > 0) 
-    {
-      /* Calculate how to fill this page.
-         We will read PAGE_READ_BYTES bytes from FILE
-         and zero the final PAGE_ZERO_BYTES bytes. */
-      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-      size_t page_zero_bytes = PGSIZE - page_read_bytes;
+	/* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
+	   (Stack validation not implimented yet!) */
+	if (!validate_free_page (upage, read_bytes)) return false;
 
-      struct exec_page *exec_page = malloc (sizeof (struct exec_page));
-      exec_page->type = EXEC;
-      exec_page->virtual_page = upage;
-      exec_page->elf_file = file;
-      exec_page->offset = ofs;
-      exec_page->zero_after = page_read_bytes;
-      exec_page->writable = writable;
-      add_lazy_page (exec_page);
-      
-      /* Advance. */
-      read_bytes -= page_read_bytes;
-      zero_bytes -= page_zero_bytes;
-      ofs += PGSIZE;
-      upage += PGSIZE;
-    }
-  file_seek (file, ofs);
-  return true;
+	/*size_t num_of_pages = read_bytes / PGSIZE;
+	if (read_bytes % PGSIZE != 0)
+		num_of_pages +=1;
+	int i;
+	uint32_t ptr = upage;
+	struct special_page_elem *spe;
+	for(i = 0; i < num_of_pages; i++)
+	{
+		spe = find_lazy_page(ptr);
+		if (spe != NULL)
+			return false; // This page has been already mapped.
+		ptr += PGSIZE;
+	}*/
+	
+	while (read_bytes > 0 || zero_bytes > 0) 
+	{
+		/* Calculate how to fill this page.
+	 	We will read PAGE_READ_BYTES bytes from FILE
+	 	and zero the final PAGE_ZERO_BYTES bytes. */
+		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+	
+		struct exec_page *exec_page = malloc (sizeof (struct exec_page));
+		exec_page->type = EXEC;
+		exec_page->virtual_page = (uint32_t)upage;
+		exec_page->elf_file = file;
+		exec_page->offset = ofs;
+		exec_page->zero_after = page_read_bytes;
+		exec_page->writable = writable;
+		add_lazy_page (exec_page);
+	  
+		/* Advance. */
+	    read_bytes -= page_read_bytes;
+	    zero_bytes -= page_zero_bytes;
+	    ofs += PGSIZE;
+	    upage += PGSIZE;
+	}
+	file_seek (file, ofs);
+	return true;
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of

@@ -1,5 +1,6 @@
 #include <debug.h>
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "page.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
@@ -73,5 +74,27 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
 void
 print_supplemental_page_table () {
   hash_apply (&thread_current ()->sup_pagetable, print_page_entry);
+}
+
+bool
+validate_free_page (void *upage, uint32_t read_bytes)
+{
+	/* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
+	   (Stack validation not implimented yet!) */
+	size_t num_of_pages = read_bytes / PGSIZE;
+	if (read_bytes % PGSIZE != 0)
+		num_of_pages +=1;
+	int i;
+	uint32_t ptr = upage;
+	struct special_page_elem *spe;
+	for(i = 0; i < num_of_pages; i++)
+	{
+		spe = find_lazy_page(ptr);
+		if (spe != NULL)
+			return false; // This page has been already mapped.
+		ptr += PGSIZE;
+	}
+	
+	return true;
 }
 
