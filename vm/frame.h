@@ -15,6 +15,7 @@ struct frame
 
 void ft_init (void);
 void *ft_get_page (enum palloc_flags flags);
+void ft_free_page (void *page);
 void ft_destroy (struct thread *t);
 
 #endif /*VM_FRAME_H_*/

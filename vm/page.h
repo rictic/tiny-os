@@ -41,7 +41,6 @@ struct file_page {
   struct file *source_file;
   size_t offset; //number of pages into the file
   size_t zero_after; //after this offset, the rest should be zeros
-  int mapping;
 };
 
 struct swap_page {

@@ -83,16 +83,15 @@ validate_free_page (void *upage, uint32_t read_bytes)
 	   (Stack validation not implimented yet!) */
 	size_t num_of_pages = read_bytes / PGSIZE;
 	if (read_bytes % PGSIZE != 0)
-		num_of_pages +=1;
+		num_of_pages++;
 	int i;
 	uint32_t ptr = upage;
 	struct special_page_elem *spe;
-	for(i = 0; i < num_of_pages; i++)
+	for(i = 0; i < num_of_pages; i++, ptr += PGSIZE)
 	{
 		spe = find_lazy_page(ptr);
 		if (spe != NULL)
 			return false; // This page has been already mapped.
-		ptr += PGSIZE;
 	}
 	
 	return true;

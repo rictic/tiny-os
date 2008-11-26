@@ -39,6 +39,32 @@ ft_get_page (enum palloc_flags flags)
 	return page;
 }
 
+/* Free an allocated page and also remove the page reference in the frame talbe. */
+void
+ft_free_page (void *page)
+{	
+	struct list_elem *elem;
+	struct frame *f;
+	
+	lock_acquire (&frame_lock);
+
+	lforeach(elem, &frame_list)
+	{
+		f = list_entry(elem, struct frame, ft_elem);
+
+		if (f->user_page == page)
+		{
+			list_remove(elem);
+			free(f);
+			break;
+		}
+	}
+	
+	lock_release (&frame_lock);
+	
+	palloc_free_page (page);
+}
+
 /* Destroy all the page references of thread t in frame table. */
 void
 ft_destroy (struct thread *t)

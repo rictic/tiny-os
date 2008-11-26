@@ -193,7 +193,7 @@ page_fault (struct intr_frame *f)
       file_seek (exec_page->elf_file, exec_page->offset);
       if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
           != (int) exec_page->zero_after) {
-        palloc_free_page (kpage);
+        ft_free_page (kpage);
         printf("Unable to read in exec file in page fault handler\n");
         lock_release (&filesys_lock);
         kill (f);
@@ -209,7 +209,7 @@ page_fault (struct intr_frame *f)
       file_seek (file_page->source_file, file_page->offset);
       if (file_read (file_page->source_file, kpage, file_page->zero_after)
           != (int) file_page->zero_after) {
-        palloc_free_page (kpage);
+        ft_free_page (kpage);
         printf ("Unable to read in mmaped file in page fault handler\n");
         lock_release (&filesys_lock);
         kill (f);  
@@ -237,7 +237,7 @@ page_fault (struct intr_frame *f)
 	  
     /* Add the page to the process's address space. */
     if (!install_page ((void *)fault_page, kpage, writable)) {
-      palloc_free_page (kpage);
+      ft_free_page (kpage);
       printf("Unable to install page into user's space in response to page fault\n");
       kill (f);
     }
