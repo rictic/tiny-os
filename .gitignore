@@ -1,3 +1,4 @@
+vm/build
 userprog/build
 *.o
 *.d
