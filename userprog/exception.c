@@ -189,6 +189,7 @@ page_fault (struct intr_frame *f)
       struct exec_page *exec_page = (struct exec_page*) gen_page;
       
       /* Load this page. */
+      file_seek (exec_page->elf_file, exec_page->offset);
       if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
           != (int) exec_page->zero_after) {
         palloc_free_page (kpage);

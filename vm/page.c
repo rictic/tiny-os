@@ -53,7 +53,7 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
   case EXEC:
     noop();
     struct exec_page *exec_page = (struct exec_page*) gen_page;
-    printf(" from file ");
+    printf(" from ");
     print_file(exec_page->elf_file);
     printf(" starting at offset %u, but zeroing after %u", (unsigned)exec_page->offset, (unsigned)exec_page->zero_after);
   case FILE:

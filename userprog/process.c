@@ -165,9 +165,6 @@ execute_thread (void *file_name_)
      
   palloc_free_page (file_name);
 
-  printf ("Supplemental page table at program `%s' start:\n", cur->name);
-  print_supplemental_page_table ();
-  printf ("-------------\n");
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -230,9 +227,6 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  printf ("Supplemental page table at program `%s' exit:\n", cur->name);
-  print_supplemental_page_table ();
-  printf ("-------------\n");
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -450,9 +444,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  lock_acquire (&filesys_lock);
-  file_close (file);
-  lock_release (&filesys_lock);
   return success;
 }
 
@@ -525,7 +516,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-  file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -534,31 +524,22 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = ft_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
-
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-
+      struct exec_page *exec_page = malloc (sizeof (struct exec_page));
+      exec_page->type = EXEC;
+      exec_page->virtual_page = upage;
+      exec_page->elf_file = file;
+      exec_page->offset = ofs;
+      exec_page->zero_after = page_read_bytes;
+      exec_page->writable = writable;
+      add_lazy_page (exec_page);
+      
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += PGSIZE;
       upage += PGSIZE;
     }
+  file_seek (file, ofs);
   return true;
 }
 
