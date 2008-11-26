@@ -188,27 +188,33 @@ page_fault (struct intr_frame *f)
       user = user; //why is this line needed?  Crazy C syntax
       struct exec_page *exec_page = (struct exec_page*) gen_page;
       
+      lock_acquire (&filesys_lock);
       /* Load this page. */
       file_seek (exec_page->elf_file, exec_page->offset);
       if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
           != (int) exec_page->zero_after) {
         palloc_free_page (kpage);
         printf("Unable to read in exec file in page fault handler\n");
+        lock_release (&filesys_lock);
         kill (f);
       }
+      lock_release (&filesys_lock);
       memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
       writable = exec_page->writable;
       break;
     case FILE:
       user = user;
       struct file_page *file_page = (struct file_page*) gen_page;
+      lock_acquire (&filesys_lock);
       file_seek (file_page->source_file, file_page->offset);
       if (file_read (file_page->source_file, kpage, file_page->zero_after)
           != (int) file_page->zero_after) {
         palloc_free_page (kpage);
         printf ("Unable to read in mmaped file in page fault handler\n");
+        lock_release (&filesys_lock);
         kill (f);  
       }
+      lock_release (&filesys_lock);
       //if we really need to zero after, then we should just use one handler
       // for both exec files and mmaped files
       memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
