@@ -84,8 +84,8 @@ validate_free_page (void *upage, uint32_t read_bytes)
 	size_t num_of_pages = read_bytes / PGSIZE;
 	if (read_bytes % PGSIZE != 0)
 		num_of_pages++;
-	int i;
-	uint32_t ptr = upage;
+	unsigned i;
+	uint32_t ptr = (uint32_t)upage;
 	struct special_page_elem *spe;
 	for(i = 0; i < num_of_pages; i++, ptr += PGSIZE)
 	{

@@ -524,9 +524,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	{
 		/* Calculate how to fill this page.
 	 	We will read PAGE_READ_BYTES bytes from FILE
-	 	and zero the final PAGE_ZERO_BYTES bytes. */
+	 	and zero the rest of the page. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+	  size_t page_zero_bytes = PGSIZE - page_read_bytes;
 	
 		struct exec_page *exec_page = malloc (sizeof (struct exec_page));
 		exec_page->type = EXEC;
@@ -535,14 +535,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		exec_page->offset = ofs;
 		exec_page->zero_after = page_read_bytes;
 		exec_page->writable = writable;
-		add_lazy_page (exec_page);
+		add_lazy_page ((struct special_page_elem*)exec_page);
 	  
 		/* Advance. */
-	    read_bytes -= page_read_bytes;
-	    zero_bytes -= page_zero_bytes;
-	    ofs += PGSIZE;
-	    upage += PGSIZE;
-	}
+    read_bytes -= page_read_bytes;
+    zero_bytes -= page_zero_bytes;
+    ofs += PGSIZE;
+    upage += PGSIZE;
+  }
 	file_seek (file, ofs);
 	return true;
 }
