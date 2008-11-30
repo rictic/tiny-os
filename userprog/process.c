@@ -66,8 +66,8 @@ process_execute (const char *cmdline)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create_child (file_name, file, PRI_DEFAULT, execute_thread, cmdline_copy);
-  if (tid == TID_ERROR)	 
-	  palloc_free_page (cmdline_copy);	  
+  if (tid == TID_ERROR)  
+    palloc_free_page (cmdline_copy);    
   
   return tid;
 }
@@ -89,8 +89,8 @@ execute_thread (void *file_name_)
   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
        token = strtok_r (NULL, " ", &save_ptr))
   {
-	  argv_temp[count] = token;
-	  count ++;	  
+    argv_temp[count] = token;
+    count ++;   
   }
   
   char *argv_count[count];
@@ -100,10 +100,10 @@ execute_thread (void *file_name_)
 
   for (i = 0; i < count; i++)
   {
-	  argv_count[i] = argv_temp[i];	  
-	  arg_length[i] = strlen(argv_count[i]) + 1;
-	  sum += arg_length[i];
-  }	  
+    argv_count[i] = argv_temp[i];   
+    arg_length[i] = strlen(argv_count[i]) + 1;
+    sum += arg_length[i];
+  }   
   
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -114,11 +114,11 @@ execute_thread (void *file_name_)
 
   if (!success) 
   {
-	  /* If load failed, quit. */
-	  cur->parent->child_success = false;
-	  sema_up (&cur->parent->child_sema);
-	  exit (-1);
-  }	  
+    /* If load failed, quit. */
+    cur->parent->child_success = false;
+    sema_up (&cur->parent->child_sema);
+    exit (-1);
+  }   
   
   sema_up (&cur->parent->child_sema);
 
@@ -127,9 +127,9 @@ execute_thread (void *file_name_)
   temp = argv_stack_address;
   for (i = 0; i < count; i++)
   {
-	  strlcpy (temp, argv_count[i], arg_length[i]);
-	  temp = (char *)temp + arg_length[i];	  
-  }	  
+    strlcpy (temp, argv_count[i], arg_length[i]);
+    temp = (char *)temp + arg_length[i];    
+  }   
   
   int num_word_align = 4 - sum % 4;
   
@@ -138,8 +138,8 @@ execute_thread (void *file_name_)
   
   for (i =0; i < num_word_align; i++)
   {
-	  *(word_align + i) = 0;	  
-  } 	 
+    *(word_align + i) = 0;    
+  }    
   
   char **argvs, **temp2;
   argvs = (char**)((size_t)word_align - (4 * (count + 1)));
@@ -147,9 +147,9 @@ execute_thread (void *file_name_)
   size_t argvs_offset = (size_t)argv_stack_address;
   for (i = 0; i < count; i++)
   {
-	  *temp2 = (char *)argvs_offset;
-	  argvs_offset += arg_length[i];
-	  temp2 = (char **)((size_t)temp2 + 4);
+    *temp2 = (char *)argvs_offset;
+    argvs_offset += arg_length[i];
+    temp2 = (char **)((size_t)temp2 + 4);
   }
   *temp2 = 0;
   
@@ -193,7 +193,7 @@ process_wait (tid_t child_tid)
   struct dead_thread *d = NULL;
   int exit_code;
   while(true){
-	lock_acquire (&t->children_lock);
+  lock_acquire (&t->children_lock);
     lforeach(elem, &t->children){
       d = list_entry(elem, struct dead_thread, child_elem);
       if (child_tid == d->tid)
@@ -239,7 +239,7 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-	  ft_destroy (cur);
+    ft_destroy (cur);
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
@@ -516,35 +516,35 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-	/* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
-	   (Stack validation not implimented yet!) */
-	if (!validate_free_page (upage, read_bytes)) return false;
+  /* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
+     (Stack validation not implimented yet!) */
+  if (!validate_free_page (upage, read_bytes)) return false;
 
-	while (read_bytes > 0 || zero_bytes > 0) 
-	{
-		/* Calculate how to fill this page.
-	 	We will read PAGE_READ_BYTES bytes from FILE
-	 	and zero the rest of the page. */
-		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-	  size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	
-		struct exec_page *exec_page = malloc (sizeof (struct exec_page));
-		exec_page->type = EXEC;
-		exec_page->virtual_page = (uint32_t)upage;
-		exec_page->elf_file = file;
-		exec_page->offset = ofs;
-		exec_page->zero_after = page_read_bytes;
-		exec_page->writable = writable;
-		add_lazy_page ((struct special_page_elem*)exec_page);
-	  
-		/* Advance. */
+  while (read_bytes > 0 || zero_bytes > 0) 
+  {
+    /* Calculate how to fill this page.
+    We will read PAGE_READ_BYTES bytes from FILE
+    and zero the rest of the page. */
+    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    struct exec_page *exec_page = malloc (sizeof (struct exec_page));
+    exec_page->type = EXEC;
+    exec_page->virtual_page = (uint32_t)upage;
+    exec_page->elf_file = file;
+    exec_page->offset = ofs;
+    exec_page->zero_after = page_read_bytes;
+    exec_page->writable = writable;
+    add_lazy_page ((struct special_page_elem*)exec_page);
+    
+    /* Advance. */
     read_bytes -= page_read_bytes;
     zero_bytes -= page_zero_bytes;
     ofs += PGSIZE;
     upage += PGSIZE;
   }
-	file_seek (file, ofs);
-	return true;
+  file_seek (file, ofs);
+  return true;
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of

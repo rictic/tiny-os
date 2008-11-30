@@ -205,95 +205,95 @@ void close (int fd){
    Returning the unique int if successful, otherwise returning -1. */
 static int mmap (int fd, void *addr)
 {
-	struct file *file = get_file (fd);
-	
-	/* Fail if... */
-	if (  file == NULL        //the file descriptor isn't a file
-	   || addr < (void *)PGSIZE       //we're trying to map the zero page
-	   || ((uint32_t)addr & 0x00000fff) != 0) //or the addr isn't page aligned
-	  return -1;
+  struct file *file = get_file (fd);
+  
+  /* Fail if... */
+  if (  file == NULL        //the file descriptor isn't a file
+     || addr < (void *)PGSIZE       //we're trying to map the zero page
+     || ((uint32_t)addr & 0x00000fff) != 0) //or the addr isn't page aligned
+    return -1;
 
   lock_acquire (&filesys_lock);
-	/* Fail if the file is 0 empty, or the page is already taken */
-	uint32_t read_bytes = file_length(file);
-	if (read_bytes == 0 || !validate_free_page (addr, read_bytes)) {
-		lock_release (&filesys_lock);
-		return -1;
-	}
-	
-	/* Otherwise, fulfill the file mapping. */
-	off_t ofs = 0;
-	int mapping = (int)addr; // Use the virtual address as mapping id.
-	while (read_bytes > 0) 
+  /* Fail if the file is 0 empty, or the page is already taken */
+  uint32_t read_bytes = file_length(file);
+  if (read_bytes == 0 || !validate_free_page (addr, read_bytes)) {
+    lock_release (&filesys_lock);
+    return -1;
+  }
+  
+  /* Otherwise, fulfill the file mapping. */
+  off_t ofs = 0;
+  int mapping = (int)addr; // Use the virtual address as mapping id.
+  while (read_bytes > 0) 
   {
-		/* Calculate how to fill this page.
-		We will read PAGE_READ_BYTES bytes from FILE
-		and zero the rest of the page. */
-		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-		
-		struct file_page *file_page = malloc (sizeof (struct file_page));
-		file_page->type = FILE;
-		file_page->virtual_page = (uint32_t)addr;
-		file_page->source_file = file;
-		file_page->offset = ofs;
-		file_page->zero_after = page_read_bytes;
+    /* Calculate how to fill this page.
+    We will read PAGE_READ_BYTES bytes from FILE
+    and zero the rest of the page. */
+    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    
+    struct file_page *file_page = malloc (sizeof (struct file_page));
+    file_page->type = FILE;
+    file_page->virtual_page = (uint32_t)addr;
+    file_page->source_file = file;
+    file_page->offset = ofs;
+    file_page->zero_after = page_read_bytes;
     add_lazy_page ((struct special_page_elem*)file_page);
 
-		/* Advance. */
-		read_bytes -= page_read_bytes;
-		ofs += PGSIZE;
-		addr += PGSIZE;
+    /* Advance. */
+    read_bytes -= page_read_bytes;
+    ofs += PGSIZE;
+    addr += PGSIZE;
   }
 
-	file_seek (file, ofs);
+  file_seek (file, ofs);
   lock_release (&filesys_lock);
-	return mapping;
+  return mapping;
 }
 
 /* Unmaps the mapping designated by int mapping. */
 static void munmap (int mapping)
 {
-	if ((mapping & 0x00000fff) == 0)
-	{
-		struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
-		
-		if (file_page != NULL)
-		{
-		    lock_acquire (&filesys_lock);
+  if ((mapping & 0x00000fff) == 0)
+  {
+    struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
+    
+    if (file_page != NULL)
+    {
+        lock_acquire (&filesys_lock);
 
-			struct thread *cur = thread_current();
-			struct file *file = file_page->source_file;
-			uint32_t read_bytes = file_length(file);
-			void * addr = (void *)mapping;
-			void *kpage;
+      struct thread *cur = thread_current();
+      struct file *file = file_page->source_file;
+      uint32_t read_bytes = file_length(file);
+      void * addr = (void *)mapping;
+      void *kpage;
 
-			if (read_bytes != 0)
-			{	
-				/* Get number of pages for this file. */
-				size_t num_of_pages = read_bytes / PGSIZE;
-				if (read_bytes % PGSIZE != 0)
-					num_of_pages++;
-				
-				unsigned i;
-				for(i = 0; i < num_of_pages; i++)
-				{
-					kpage = pagedir_get_page (cur->pagedir, addr);
-					if (kpage != NULL)
-					{
-						if (pagedir_is_dirty (cur->pagedir, addr))
-							file_write_at (file, addr, file_page->zero_after, file_page->offset);
-						ft_free_page (kpage);
-					}	
-						  
-					hash_delete (&cur->sup_pagetable, &file_page->elem);
-					free(file_page);
-					addr += PGSIZE;
-					file_page = (struct file_page*) find_lazy_page((int)addr);
-				}	  			  
-			}
-		    lock_release (&filesys_lock);
-		}		
-	}
+      if (read_bytes != 0)
+      { 
+        /* Get number of pages for this file. */
+        size_t num_of_pages = read_bytes / PGSIZE;
+        if (read_bytes % PGSIZE != 0)
+          num_of_pages++;
+        
+        unsigned i;
+        for(i = 0; i < num_of_pages; i++)
+        {
+          kpage = pagedir_get_page (cur->pagedir, addr);
+          if (kpage != NULL)
+          {
+            if (pagedir_is_dirty (cur->pagedir, addr))
+              file_write_at (file, addr, file_page->zero_after, file_page->offset);
+            ft_free_page (kpage);
+          } 
+              
+          hash_delete (&cur->sup_pagetable, &file_page->elem);
+          free(file_page);
+          addr += PGSIZE;
+          file_page = (struct file_page*) find_lazy_page((int)addr);
+        }           
+      }
+        lock_release (&filesys_lock);
+    }   
+  }
 }
 
 static void syscall_handler (struct intr_frame *);
@@ -310,7 +310,7 @@ syscall_handler (struct intr_frame *f)
 {
   int *args = f->esp; args++;
   int return_val = f->eax;
-	
+  
   validate_read (f->esp, 1);
   
   int sys_call = *((int *)f->esp);
@@ -348,7 +348,7 @@ validate_string (const char * string) {
   int val = -1;
   if (string == NULL) exit(-1);
   for(i = 0;val != 0;i++){
-	if (string + i >= (char *)PHYS_BASE) exit(-1);
+  if (string + i >= (char *)PHYS_BASE) exit(-1);
     val = get_user(string+i);
     if (val == -1) exit(-1);
   }
@@ -358,33 +358,33 @@ validate_string (const char * string) {
 static void 
 validate_read (const char *buffer, unsigned size)
 {
-	unsigned count = 0;
-	
-	if (buffer + size >= (char *)PHYS_BASE)
-		exit(-1);
-	for (count = 0; count < size; count ++)
-		if (get_user (buffer + count) == -1)
-			exit(-1);
+  unsigned count = 0;
+  
+  if (buffer + size >= (char *)PHYS_BASE)
+    exit(-1);
+  for (count = 0; count < size; count ++)
+    if (get_user (buffer + count) == -1)
+      exit(-1);
 }
 
 /* Validate writing to user memory */
 static void 
 validate_write (char *from, char *user_to, unsigned size, bool malloc_buffer)
 {
-	unsigned count;
-	
-	if (user_to + size >= (char *)PHYS_BASE)
-	{
-		if (malloc_buffer) free(from);
-		exit(-1);		
-	}	
-	for (count = 0; count < size; count ++) {
-		if (!put_user (user_to+count, *(from+count)))
-		{
-			if (malloc_buffer) free(from);			
-			exit(-1);			
-		}	
-	}
+  unsigned count;
+  
+  if (user_to + size >= (char *)PHYS_BASE)
+  {
+    if (malloc_buffer) free(from);
+    exit(-1);   
+  } 
+  for (count = 0; count < size; count ++) {
+    if (!put_user (user_to+count, *(from+count)))
+    {
+      if (malloc_buffer) free(from);      
+      exit(-1);     
+    } 
+  }
 }
 
 /* Reads a byte at user virtual address UADDR.
