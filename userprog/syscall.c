@@ -10,6 +10,8 @@
 #include "filesys/file.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
 
 #define fdtable thread_current ()->files
 inline static struct file* get_file(int fd) {
@@ -203,48 +205,31 @@ void close (int fd){
    Returning the unique int if successful, otherwise returning -1. */
 static int mmap (int fd, void *addr)
 {
-	int mapping = -1;
-	
-	/* File descriptors 0 and 1 are not mappable. */
-	if (fd < 2) return mapping;
-	
-    lock_acquire (&filesys_lock);
-
 	struct file *file = get_file (fd);
 	
-	/* Failed if file is NULL. */
-	if (file == NULL) 
-	{
-		lock_release (&filesys_lock);
-		return mapping;
-	}	
+	/* Fail if... */
+	if (  file == NULL        //the file descriptor isn't a file
+	   || addr < (void *)PGSIZE       //we're trying to map the zero page
+	   || ((uint32_t)addr & 0x00000fff) != 0) //or the addr isn't page aligned
+	  return -1;
 
-	/* Failed if file is 0 length, or virtual address addr is in page 0, or addr is not page-aligned. */
+  lock_acquire (&filesys_lock);
+	/* Fail if the file is 0 empty, or the page is already taken */
 	uint32_t read_bytes = file_length(file);
-	if (read_bytes == 0 || addr < PGSIZE || (((uint32_t)addr) & 0x00000fff) != 0)
-	{
+	if (read_bytes == 0 || !validate_free_page (addr, read_bytes)) {
 		lock_release (&filesys_lock);
-		return mapping;
-	}	
-	
-	/* Failed if the range of pages mapped overlaps any existing set of mapping pages. 
-	   (Stack validation not implimented yet!) */
-	if (!validate_free_page (addr, read_bytes))
-	{
-		lock_release (&filesys_lock);
-		return mapping;
-	}	
+		return -1;
+	}
 	
 	/* Otherwise, fulfill the file mapping. */
 	off_t ofs = 0;
-	mapping = addr; // Use the virtual address as mapping id.
+	int mapping = (int)addr; // Use the virtual address as mapping id.
 	while (read_bytes > 0) 
-    {		
+  {
 		/* Calculate how to fill this page.
 		We will read PAGE_READ_BYTES bytes from FILE
-		and zero the final PAGE_ZERO_BYTES bytes. */
+		and zero the rest of the page. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 		
 		struct file_page *file_page = malloc (sizeof (struct file_page));
 		file_page->type = FILE;
@@ -252,16 +237,16 @@ static int mmap (int fd, void *addr)
 		file_page->source_file = file;
 		file_page->offset = ofs;
 		file_page->zero_after = page_read_bytes;
-	    add_lazy_page (file_page);
+    add_lazy_page ((struct special_page_elem*)file_page);
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		ofs += PGSIZE;
 		addr += PGSIZE;
-    }
+  }
+
 	file_seek (file, ofs);
-	
-    lock_release (&filesys_lock);
+  lock_release (&filesys_lock);
 	return mapping;
 }
 
@@ -279,7 +264,7 @@ static void munmap (int mapping)
 			struct thread *cur = thread_current();
 			struct file *file = file_page->source_file;
 			uint32_t read_bytes = file_length(file);
-			uint32_t addr = mapping;
+			void * addr = (void *)mapping;
 			void *kpage;
 
 			if (read_bytes != 0)
@@ -289,7 +274,7 @@ static void munmap (int mapping)
 				if (read_bytes % PGSIZE != 0)
 					num_of_pages++;
 				
-				int i;
+				unsigned i;
 				for(i = 0; i < num_of_pages; i++)
 				{
 					kpage = pagedir_get_page (cur->pagedir, addr);
@@ -303,7 +288,7 @@ static void munmap (int mapping)
 					hash_delete (&cur->sup_pagetable, &file_page->elem);
 					free(file_page);
 					addr += PGSIZE;
-					file_page = (struct file_page*) find_lazy_page(addr);
+					file_page = (struct file_page*) find_lazy_page((int)addr);
 				}	  			  
 			}
 		    lock_release (&filesys_lock);
@@ -346,7 +331,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE   : validate_read ((char *)args, 1); close (args[0]); break;
     
     /* Project 3 and optionally project 4. */
-    case SYS_MMAP    : validate_read ((char *)args, 2); return_val = mmap (args[0], args[1]); break; 
+    case SYS_MMAP    : validate_read ((char *)args, 2); return_val = mmap (args[0], (void *)args[1]); break; 
     case SYS_MUNMAP  : validate_read ((char *)args, 1); munmap (args[0]); break; 
 
     default: exit(-1);
