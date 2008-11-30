@@ -166,12 +166,12 @@ page_fault (struct intr_frame *f)
 	default:
     gen_page = find_lazy_page (fault_page);
 	  if (gen_page == NULL) {
+	    page_fault:
 	    printf ("Page fault at %p: %s error %s page in %s context.\n",
   	          fault_addr,
   	          not_present ? "not present" : "rights violation",
   	          write ? "writing" : "reading",
   	          user ? "user" : "kernel");
-//       printf ("Supplemental page table contents:\n");
 //       print_supplemental_page_table ();
   	  kill (f);	
 	  }
@@ -182,7 +182,7 @@ page_fault (struct intr_frame *f)
       printf ("Unable to get a page of memory to handle a page fault\n");
       kill (f);
     }
-    bool writable = false;
+    bool writable = true;
 	  switch (gen_page->type) {
     case EXEC:
       user = user; //why is this line needed?  Crazy C syntax
@@ -218,7 +218,6 @@ page_fault (struct intr_frame *f)
       //if we really need to zero after, then we should just use one handler
       // for both exec files and mmaped files
       memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
-      writable = true;
       break;
     case SWAP:
       user = user; // stupid c parser
@@ -228,12 +227,17 @@ page_fault (struct intr_frame *f)
       slot.start = swap_page->sector;
       
       swap_slot_read (kpage, &slot);
-      writable = true;
       break;
     case ZERO:
       memset (kpage, 0, PGSIZE);
       break;
+    case STACK:
+      if (fault_addr - 32 > f->esp)
+        goto page_fault; //not legitimate stack growth
+      break;
 	  }
+	  
+    
 	  
     /* Add the page to the process's address space. */
     if (!install_page ((void *)fault_page, kpage, writable)) {

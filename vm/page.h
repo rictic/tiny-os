@@ -7,10 +7,11 @@ enum special_page {
   EXEC,
   FILE,
   SWAP,
-  ZERO
+  ZERO,
+  STACK
 };
-static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO"};
-inline static const  char * special_page_name(const enum special_page page_num) {
+static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "STACK"};
+inline static const char * special_page_name(const enum special_page page_num) {
   return special_page_names[page_num];
 }
 
@@ -55,6 +56,13 @@ struct zero_page {
   struct hash_elem elem;
   uint32_t virtual_page;
 };
+
+struct stack_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+};
+
 
 void init_supplemental_pagetable (struct hash *sup_pagetable);
 struct special_page_elem * add_lazy_page (struct special_page_elem *page);

@@ -553,16 +553,23 @@ static bool
 setup_stack (void **esp) 
 {
   uint8_t *kpage;
-  bool success = false;
-
+  unsigned offset = PGSIZE;
   kpage = ft_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
+  if (kpage != NULL) {
+    if (install_page (((uint8_t *) PHYS_BASE) - offset, kpage, true))
+      *esp = PHYS_BASE;
+    else {
+      palloc_free_page (kpage);
+      return false;
     }
-  return success;
+  }
+
+  //map pages for stack growth
+  for (offset += PGSIZE; offset <= PGSIZE * 2000; offset += PGSIZE) {
+    struct stack_page *stack_page = malloc (sizeof (struct stack_page));
+    stack_page->type = STACK;
+    stack_page->virtual_page = PHYS_BASE-offset;
+    add_lazy_page ((struct special_page_elem*) stack_page);
+  }
+  return true;
 }
