@@ -232,8 +232,11 @@ page_fault (struct intr_frame *f)
       memset (kpage, 0, PGSIZE);
       break;
     case STACK:
-      if (fault_addr - 32 > f->esp)
+      if (fault_addr + 32 < f->esp){
+//         printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, f->esp);
         goto page_fault; //not legitimate stack growth
+      }
+        
       break;
 	  }
 	  

@@ -62,8 +62,8 @@ pass tests/userprog/bad-jump
 pass tests/userprog/bad-jump2
 pass tests/vm/pt-grow-stack
 pass tests/vm/pt-grow-pusha
-FAIL tests/vm/pt-grow-bad
-FAIL tests/vm/pt-big-stk-obj
+pass tests/vm/pt-grow-bad
+pass tests/vm/pt-big-stk-obj
 pass tests/vm/pt-bad-addr
 pass tests/vm/pt-bad-read
 pass tests/vm/pt-write-code
@@ -76,7 +76,7 @@ FAIL tests/vm/page-merge-par
 FAIL tests/vm/page-merge-stk
 FAIL tests/vm/page-merge-mm
 pass tests/vm/page-shuffle
-pass tests/vm/mmap-read
+FAIL tests/vm/mmap-read
 FAIL tests/vm/mmap-close
 pass tests/vm/mmap-unmap
 pass tests/vm/mmap-overlap
@@ -107,4 +107,4 @@ pass tests/filesys/base/sm-seq-random
 FAIL tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
 FAIL tests/filesys/base/syn-write
-20 of 109 tests failed.
+19 of 109 tests failed.
