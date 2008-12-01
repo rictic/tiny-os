@@ -2,10 +2,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 #include "threads/init.h"
 #include "threads/pte.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
+
 
 static uint32_t *active_pd (void);
 static void invalidate_pagedir (uint32_t *);
@@ -179,7 +181,7 @@ install_page (void *upage, void *kpage, bool writable)
   }
   if (!pagedir_set_page (t->pagedir, upage, kpage, writable)) {
     printf("unable to map kpage 0x%08x into upage 0x%08x as %s\n",
-        kpage, upage, writable ? "writable" : "read-only");
+        (unsigned)kpage, (unsigned)upage, writable ? "writable" : "read-only");
     return false;
   }
   return true;
