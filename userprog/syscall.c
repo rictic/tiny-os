@@ -253,46 +253,47 @@ static int mmap (int fd, void *addr)
 /* Unmaps the mapping designated by int mapping. */
 static void munmap (int mapping)
 {
-  if ((mapping & 0x00000fff) == 0)
-  {
-    struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
-    
-    if (file_page != NULL)
-    {
+  if ((mapping & 0x00000fff) != 0)
+    return;
+
+  struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
+  if (file_page == NULL)
+    return;
+
+
+  struct thread *cur = thread_current();
+  struct file *file = file_page->source_file;
+  void * addr = (void *)mapping;
+  void *kpage;
+  
+  lock_acquire (&filesys_lock);
+  uint32_t read_bytes = file_length(file);
+  lock_release (&filesys_lock);
+  
+  if (read_bytes == 0)
+    return;
+
+  /* Get number of pages for this file. */
+  size_t num_of_pages = read_bytes / PGSIZE;
+  if (read_bytes % PGSIZE != 0)
+    num_of_pages++;
+  
+  unsigned i;
+  for(i = 0; i < num_of_pages; i++) {
+    kpage = pagedir_get_page (cur->pagedir, addr);
+    if (kpage != NULL) {
+      if (pagedir_is_dirty (cur->pagedir, addr)) {
         lock_acquire (&filesys_lock);
-
-      struct thread *cur = thread_current();
-      struct file *file = file_page->source_file;
-      uint32_t read_bytes = file_length(file);
-      void * addr = (void *)mapping;
-      void *kpage;
-
-      if (read_bytes != 0)
-      { 
-        /* Get number of pages for this file. */
-        size_t num_of_pages = read_bytes / PGSIZE;
-        if (read_bytes % PGSIZE != 0)
-          num_of_pages++;
-        
-        unsigned i;
-        for(i = 0; i < num_of_pages; i++)
-        {
-          kpage = pagedir_get_page (cur->pagedir, addr);
-          if (kpage != NULL)
-          {
-            if (pagedir_is_dirty (cur->pagedir, addr))
-              file_write_at (file, addr, file_page->zero_after, file_page->offset);
-            ft_free_page (kpage);
-          } 
-              
-          hash_delete (&cur->sup_pagetable, &file_page->elem);
-          free(file_page);
-          addr += PGSIZE;
-          file_page = (struct file_page*) find_lazy_page((int)addr);
-        }           
-      }
+        file_write_at (file, addr, file_page->zero_after, file_page->offset);
         lock_release (&filesys_lock);
-    }   
+      }
+      ft_free_page (kpage);
+    } 
+        
+    hash_delete (&cur->sup_pagetable, &file_page->elem);
+    free(file_page);
+    addr += PGSIZE;
+    file_page = (struct file_page*) find_lazy_page((int)addr);
   }
 }
 
