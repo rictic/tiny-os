@@ -67,6 +67,8 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
     break;
   case ZERO:
     break;
+  case STACK:
+    break;
   }
   printf("\n");
 }
