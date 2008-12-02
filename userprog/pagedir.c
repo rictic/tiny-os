@@ -176,12 +176,12 @@ install_page (void *upage, void *kpage, bool writable)
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   if (pagedir_get_page (t->pagedir, upage) != NULL){
-    printf("page found while trying to install page\n");
+//     printf("page found while trying to install page\n");
     return false;
   }
   if (!pagedir_set_page (t->pagedir, upage, kpage, writable)) {
-    printf("unable to map kpage 0x%08x into upage 0x%08x as %s\n",
-        (unsigned)kpage, (unsigned)upage, writable ? "writable" : "read-only");
+//     printf("unable to map kpage 0x%08x into upage 0x%08x as %s\n",
+//         (unsigned)kpage, (unsigned)upage, writable ? "writable" : "read-only");
     return false;
   }
   return true;

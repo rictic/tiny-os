@@ -177,7 +177,7 @@ page_fault (struct intr_frame *f)
   	          not_present ? "not present" : "rights violation",
   	          write ? "writing" : "reading",
   	          user ? "user" : "kernel");
-  	  kill (f);	
+  	  exit (-1);	
   	}
   }
 
@@ -185,7 +185,7 @@ page_fault (struct intr_frame *f)
   uint8_t *kpage = ft_get_page (PAL_USER);
   if (kpage == NULL){
     printf ("Unable to get a page of memory to handle a page fault\n");
-    kill (f);
+    exit (-1);
   }
   bool writable = true;
   switch (gen_page->type) {
@@ -201,7 +201,7 @@ page_fault (struct intr_frame *f)
       ft_free_page (kpage);
       printf("Unable to read in exec file in page fault handler\n");
       lock_release (&filesys_lock);
-      kill (f);
+      exit (-1);
     }
     lock_release (&filesys_lock);
     memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
@@ -217,7 +217,7 @@ page_fault (struct intr_frame *f)
       ft_free_page (kpage);
       printf ("Unable to read in mmaped file in page fault handler\n");
       lock_release (&filesys_lock);
-      kill (f);  
+      exit (-1);  
     }
     lock_release (&filesys_lock);
     //if we really need to zero after, then we should just use one handler
@@ -249,8 +249,7 @@ page_fault (struct intr_frame *f)
   /* Add the page to the process's address space. */
   if (!install_page ((void *)fault_page, kpage, writable)) {
     ft_free_page (kpage);
-    printf("Unable to install page into user's space in response to page fault\n");
-    kill (f);
+    exit (-1);
   }
 }
 

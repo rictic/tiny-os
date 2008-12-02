@@ -68,7 +68,7 @@ pass tests/vm/pt-big-stk-obj
 pass tests/vm/pt-bad-addr
 pass tests/vm/pt-bad-read
 pass tests/vm/pt-write-code
-FAIL tests/vm/pt-write-code2
+pass tests/vm/pt-write-code2
 pass tests/vm/pt-grow-stk-sc
 FAIL tests/vm/page-linear
 FAIL tests/vm/page-parallel
@@ -105,7 +105,7 @@ pass tests/filesys/base/sm-full
 pass tests/filesys/base/sm-random
 pass tests/filesys/base/sm-seq-block
 pass tests/filesys/base/sm-seq-random
-pass tests/filesys/base/syn-read
+FAIL tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
 pass tests/filesys/base/syn-write
 16 of 109 tests failed.
