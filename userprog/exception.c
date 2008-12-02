@@ -172,11 +172,11 @@ page_fault (struct intr_frame *f)
   		f->eax = -1;
       return;
   	default:
-      printf ("Page fault at %p: %s error %s page in %s context.\n",
-  	          fault_addr,
-  	          not_present ? "not present" : "rights violation",
-  	          write ? "writing" : "reading",
-  	          user ? "user" : "kernel");
+//       printf ("Page fault at %p: %s error %s page in %s context.\n",
+//   	          fault_addr,
+//   	          not_present ? "not present" : "rights violation",
+//   	          write ? "writing" : "reading",
+//   	          user ? "user" : "kernel");
   	  exit (-1);	
   	}
   }
