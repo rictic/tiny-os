@@ -39,7 +39,7 @@ ft_get_page (enum palloc_flags flags)
 	return page;
 }
 
-/* Free an allocated page and also remove the page reference in the frame talbe. */
+/* Free an allocated page and also remove the page reference in the frame table. */
 void
 ft_free_page (void *page)
 {	
