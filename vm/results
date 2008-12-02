@@ -1,3 +1,4 @@
+pass tests/filesys/base/syn-write
 pass tests/userprog/args-none
 pass tests/userprog/args-single
 pass tests/userprog/args-multiple
@@ -30,7 +31,7 @@ pass tests/userprog/close-stdout
 pass tests/userprog/close-bad-fd
 pass tests/userprog/read-normal
 pass tests/userprog/read-bad-ptr
-FAIL tests/userprog/read-boundary
+pass tests/userprog/read-boundary
 pass tests/userprog/read-zero
 pass tests/userprog/read-stdout
 pass tests/userprog/read-bad-fd
@@ -67,8 +68,8 @@ pass tests/vm/pt-big-stk-obj
 pass tests/vm/pt-bad-addr
 pass tests/vm/pt-bad-read
 pass tests/vm/pt-write-code
-pass tests/vm/pt-write-code2
-FAIL tests/vm/pt-grow-stk-sc
+FAIL tests/vm/pt-write-code2
+pass tests/vm/pt-grow-stk-sc
 FAIL tests/vm/page-linear
 FAIL tests/vm/page-parallel
 FAIL tests/vm/page-merge-seq
@@ -104,7 +105,7 @@ pass tests/filesys/base/sm-full
 pass tests/filesys/base/sm-random
 pass tests/filesys/base/sm-seq-block
 pass tests/filesys/base/sm-seq-random
-FAIL tests/filesys/base/syn-read
+pass tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
-FAIL tests/filesys/base/syn-write
-19 of 109 tests failed.
+pass tests/filesys/base/syn-write
+16 of 109 tests failed.

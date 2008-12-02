@@ -135,6 +135,7 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
   struct special_page_elem *gen_page;
+  void * esp;
   uint32_t fault_page;
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -157,97 +158,99 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  switch (f->cs)
-	{
-	case SEL_KCSEG:
-		f->eip = (void *)f->eax;
-		f->eax = -1;
-		break;
-	default:
-    gen_page = find_lazy_page (fault_page);
-	  if (gen_page == NULL) {
-	    page_fault:
-	    printf ("Page fault at %p: %s error %s page in %s context.\n",
+  esp = f->esp;
+  if (f->cs == SEL_KCSEG)
+    esp = thread_current ()->esp;
+
+  gen_page = find_lazy_page (fault_page);
+  if (gen_page == NULL) {
+    page_fault:
+    switch (f->cs)
+  	{
+  	case SEL_KCSEG:
+  		f->eip = (void *)f->eax;
+  		f->eax = -1;
+      return;
+  	default:
+      printf ("Page fault at %p: %s error %s page in %s context.\n",
   	          fault_addr,
   	          not_present ? "not present" : "rights violation",
   	          write ? "writing" : "reading",
   	          user ? "user" : "kernel");
-//       print_supplemental_page_table ();
   	  kill (f);	
-	  }
-	  
-	  /* Get a page of memory. */
-    uint8_t *kpage = ft_get_page (PAL_USER);
-    if (kpage == NULL){
-      printf ("Unable to get a page of memory to handle a page fault\n");
-      kill (f);
-    }
-    bool writable = true;
-	  switch (gen_page->type) {
-    case EXEC:
-      user = user; //why is this line needed?  Crazy C syntax
-      struct exec_page *exec_page = (struct exec_page*) gen_page;
-      
-      lock_acquire (&filesys_lock);
-      /* Load this page. */
-      file_seek (exec_page->elf_file, exec_page->offset);
-      if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
-          != (int) exec_page->zero_after) {
-        ft_free_page (kpage);
-        printf("Unable to read in exec file in page fault handler\n");
-        lock_release (&filesys_lock);
-        kill (f);
-      }
-      lock_release (&filesys_lock);
-      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
-      writable = exec_page->writable;
-      break;
-    case FILE:
-      user = user;
-      struct file_page *file_page = (struct file_page*) gen_page;
-      lock_acquire (&filesys_lock);
-      file_seek (file_page->source_file, file_page->offset);
-      if (file_read (file_page->source_file, kpage, file_page->zero_after)
-          != (int) file_page->zero_after) {
-        ft_free_page (kpage);
-        printf ("Unable to read in mmaped file in page fault handler\n");
-        lock_release (&filesys_lock);
-        kill (f);  
-      }
-      lock_release (&filesys_lock);
-      //if we really need to zero after, then we should just use one handler
-      // for both exec files and mmaped files
-      memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
-      break;
-    case SWAP:
-      user = user; // stupid c parser
-      struct swap_page *swap_page = (struct swap_page*) gen_page;
-      struct swap_slot slot;
-      slot.tid = thread_current ()->tid;
-      slot.start = swap_page->sector;
-      
-      swap_slot_read (kpage, &slot);
-      break;
-    case ZERO:
-      memset (kpage, 0, PGSIZE);
-      break;
-    case STACK:
-      if (fault_addr + 32 < f->esp){
-//         printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, f->esp);
-        goto page_fault; //not legitimate stack growth
-      }
-        
-      break;
-	  }
-	  
-    
-	  
-    /* Add the page to the process's address space. */
-    if (!install_page ((void *)fault_page, kpage, writable)) {
+  	}
+  }
+
+  /* Get a page of memory. */
+  uint8_t *kpage = ft_get_page (PAL_USER);
+  if (kpage == NULL){
+    printf ("Unable to get a page of memory to handle a page fault\n");
+    kill (f);
+  }
+  bool writable = true;
+  switch (gen_page->type) {
+  case EXEC:
+    user = user; //why is this line needed?  Crazy C syntax
+    struct exec_page *exec_page = (struct exec_page*) gen_page;
+
+    lock_acquire (&filesys_lock);
+    /* Load this page. */
+    file_seek (exec_page->elf_file, exec_page->offset);
+    if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
+        != (int) exec_page->zero_after) {
       ft_free_page (kpage);
-      printf("Unable to install page into user's space in response to page fault\n");
+      printf("Unable to read in exec file in page fault handler\n");
+      lock_release (&filesys_lock);
       kill (f);
     }
-	}
+    lock_release (&filesys_lock);
+    memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
+    writable = exec_page->writable;
+    break;
+  case FILE:
+    user = user;
+    struct file_page *file_page = (struct file_page*) gen_page;
+    lock_acquire (&filesys_lock);
+    file_seek (file_page->source_file, file_page->offset);
+    if (file_read (file_page->source_file, kpage, file_page->zero_after)
+        != (int) file_page->zero_after) {
+      ft_free_page (kpage);
+      printf ("Unable to read in mmaped file in page fault handler\n");
+      lock_release (&filesys_lock);
+      kill (f);  
+    }
+    lock_release (&filesys_lock);
+    //if we really need to zero after, then we should just use one handler
+    // for both exec files and mmaped files
+    memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
+    break;
+  case SWAP:
+    user = user; // stupid c parser
+    struct swap_page *swap_page = (struct swap_page*) gen_page;
+    struct swap_slot slot;
+    slot.tid = thread_current ()->tid;
+    slot.start = swap_page->sector;
+
+    swap_slot_read (kpage, &slot);
+    break;
+  case ZERO:
+    memset (kpage, 0, PGSIZE);
+    break;
+  case STACK:
+    if (fault_addr + 32 < esp){
+//       printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, esp);
+      goto page_fault; //not legitimate stack growth
+    }
+
+    break;
+  }
+
+
+  /* Add the page to the process's address space. */
+  if (!install_page ((void *)fault_page, kpage, writable)) {
+    ft_free_page (kpage);
+    printf("Unable to install page into user's space in response to page fault\n");
+    kill (f);
+  }
 }
 

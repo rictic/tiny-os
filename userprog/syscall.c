@@ -312,7 +312,7 @@ syscall_handler (struct intr_frame *f)
   int return_val = f->eax;
   
   validate_read (f->esp, 1);
-  
+  thread_current ()->esp = f->esp;
   int sys_call = *((int *)f->esp);
 
   switch (sys_call){

@@ -114,7 +114,8 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-
+    void * esp;                         /* The program's stack pointer when 
+                                          it entered kernel mode. */
     struct hash sup_pagetable;          /* Supplemental page table */
 
     struct file *(files[NUM_FD]);       /* File descriptor table */
