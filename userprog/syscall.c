@@ -210,7 +210,8 @@ static int mmap (int fd, void *addr)
   /* Fail if... */
   if (  file == NULL        //the file descriptor isn't a file
      || addr < (void *)PGSIZE       //we're trying to map the zero page
-     || ((uint32_t)addr & 0x00000fff) != 0) //or the addr isn't page aligned
+     || ((uint32_t)addr & 0x00000fff) != 0  //or the addr isn't page aligned
+     || (uint32_t)addr >= stack_bottom_addr) //or the addr is trying to map above the stack address.
     return -1;
 
   lock_acquire (&filesys_lock);
@@ -253,7 +254,8 @@ static int mmap (int fd, void *addr)
 /* Unmaps the mapping designated by int mapping. */
 static void munmap (int mapping)
 {
-  if ((mapping & 0x00000fff) != 0)
+  if ((mapping & 0x00000fff) != 0
+	 || (uint32_t)mapping >= stack_bottom_addr)
     return;
 
   struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);

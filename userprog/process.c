@@ -554,13 +554,16 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   unsigned offset = PGSIZE;
-  struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, true); 
+  struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, STACK); 
 
   if (frame != NULL) {
 	kpage = frame->user_page;
 
     if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
-      *esp = PHYS_BASE;
+    {
+        *esp = PHYS_BASE;
+    	stack_bottom_addr = (uint32_t)(((uint8_t *) PHYS_BASE) - offset);
+    }	
     else {
       ft_free_page (kpage);
       return false;

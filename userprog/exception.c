@@ -7,6 +7,7 @@
 #include "threads/thread.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
+#include "threads/pte.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
 #include "userprog/process.h"
@@ -137,6 +138,8 @@ page_fault (struct intr_frame *f)
   struct special_page_elem *gen_page;
   void * esp;
   uint32_t fault_page;
+  struct thread *cur = thread_current();
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -160,7 +163,7 @@ page_fault (struct intr_frame *f)
 
   esp = f->esp;
   if (f->cs == SEL_KCSEG)
-    esp = thread_current ()->esp;
+    esp = cur->esp;
 
   gen_page = find_lazy_page (fault_page);
   if (gen_page == NULL) {
@@ -182,7 +185,7 @@ page_fault (struct intr_frame *f)
   }
 
   /* Get a page of memory. */
-  struct frame *frame = ft_get_page (PAL_USER, false);   
+  struct frame *frame = ft_get_page (PAL_USER, gen_page->type);   
   if (frame == NULL){
     printf ("Unable to get a page of memory to handle a page fault\n");
     exit (-1);
@@ -190,6 +193,7 @@ page_fault (struct intr_frame *f)
   uint8_t *kpage = frame->user_page;
 
   bool writable = true;
+  bool dirty = false;
   switch (gen_page->type) {
   case EXEC:
     user = user; //why is this line needed?  Crazy C syntax
@@ -208,6 +212,8 @@ page_fault (struct intr_frame *f)
     lock_release (&filesys_lock);
     memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
     writable = exec_page->writable;
+    
+    frame->type = EXEC;
     break;
   case FILE:
     user = user;
@@ -224,7 +230,8 @@ page_fault (struct intr_frame *f)
     lock_release (&filesys_lock);
     //if we really need to zero after, then we should just use one handler
     // for both exec files and mmaped files
-    memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);
+    memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
+    frame->type = FILE;
     break;
   case SWAP:
     user = user; // stupid c parser
@@ -232,19 +239,33 @@ page_fault (struct intr_frame *f)
     struct swap_slot slot;
     //slot.tid = thread_current ()->tid;
     slot.start = swap_page->sector;
-
+    dirty = swap_page->dirty;
     swap_slot_read (kpage, &slot);
+    
+    //delete swap_page in supplemental table.
+    hash_delete (&cur->sup_pagetable, &swap_page->elem);
+    free(swap_page);
+    
+    frame->type = swap_page->type_before;
     break;
   case ZERO:
     memset (kpage, 0, PGSIZE);
+    frame->type = ZERO;
     break;
   case STACK:
-	frame->is_stack = true;
     if (fault_addr + 32 < esp){
 //       printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, esp);
       goto page_fault; //not legitimate stack growth
     }
 
+	stack_bottom_addr -= PGSIZE;
+    
+    struct stack_page *stack_page = (struct stack_page*) gen_page;
+
+    //delete stack_page in supplemental table.
+    hash_delete (&cur->sup_pagetable, &stack_page->elem);
+    free(stack_page); 
+    frame->type = STACK;
     break;
   }
 
@@ -254,5 +275,9 @@ page_fault (struct intr_frame *f)
     ft_free_page (kpage);
     exit (-1);
   }
+  
+  /* Set dirty bit if this frame is dirty before swaping to the swap disk. */
+  if (dirty)
+	  *frame->PTE |= PTE_D;
 }
 

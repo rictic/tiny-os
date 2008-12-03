@@ -30,7 +30,7 @@ ft_init (void)
 
 /* Get a user page from user pool, and add to our frame table if successful. */
 struct frame *
-ft_get_page (enum palloc_flags flags, bool is_stack)
+ft_get_page (enum palloc_flags flags, enum special_page type)
 {
 	ASSERT (flags & PAL_USER);
 
@@ -41,7 +41,7 @@ ft_get_page (enum palloc_flags flags, bool is_stack)
 	{
 		f = malloc (sizeof (struct frame));
 		f->tid = thread_current()->tid;
-		f->is_stack = is_stack;
+		f->type = type;
 		f->user_page = page;
 	
 		lock_acquire (&frame_lock);
@@ -52,10 +52,11 @@ ft_get_page (enum palloc_flags flags, bool is_stack)
 	{
 		f = ft_replacement();
 
+		if (f == NULL)
+			return NULL;
 		/* Clear all the information for this frame. */
 		f->tid = thread_current()->tid;
-		f->is_stack = is_stack;
-		f->user_page = page;
+		f->type = type;
 	}	
 	
 	return f;
@@ -147,22 +148,37 @@ ft_replacement (void)
 		pte = f->PTE;
 	}
 	
+	/* If this page is for FILE, write it back to that file. */
+	if (f->type == FILE && (*pte & PTE_D) != 0)
+	{
+		struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->user_page);
+		ASSERT (file_page != NULL);
+		
+		file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
+	}			
+	
 	/* If this page is for stack or has been written by CPU, save it to SWAP. */
-	if (f->is_stack || (*pte & PTE_D) != 0)
+	if (f->type == STACK || (*pte & PTE_D) != 0)
 	{
 		struct swap_slot *ss = swap_slot_write(f->user_page);
 	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
 	    
+	    if (ss == NULL)
+	    	return NULL;
+	    
 	    swap_page->type = SWAP;
 	    swap_page->virtual_page = (uint32_t)f->user_page;
 	    swap_page->sector = ss->start;
+	    swap_page->dirty = *pte & PTE_D;
+	    swap_page->type_before = f->type;
 	    add_lazy_page ((struct special_page_elem*)swap_page);
 	}
 	
 	/* Clear all the information for this frame. */
+	*pte &= ~(uint32_t) PGMASK;
+
 	f->tid = NULL;
-	f->is_stack = NULL;
-	f->user_page = NULL;
+	f->type = 0;
 	f->PTE = NULL;
 	
 	intr_set_level (old_level);
