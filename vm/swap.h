@@ -12,7 +12,7 @@
 /* frame structure for frame table. */
 struct swap_slot
 {
-    tid_t tid;                          /* Thread identifier. */
+    //tid_t tid;                          /* Thread identifier. */
     disk_sector_t start;                /* First data sector of the swap slot. */
 };
 
@@ -25,6 +25,6 @@ struct free_swap_slot
 
 void swap_init (void);
 bool swap_slot_read (void *frame, struct swap_slot* ss);
-struct swap_slot* swap_slot_write (void *frame, struct thread *t);
+struct swap_slot* swap_slot_write (void *frame);
 
 #endif /*VM_SWAP_H_*/

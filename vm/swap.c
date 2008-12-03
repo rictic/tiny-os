@@ -61,7 +61,7 @@ swap_slot_read (void *frame, struct swap_slot* ss)
 /* Write one frame of thread t to the swap disk. Return that swap slot if successful. 
    Otherwise, return NULL. */
 struct swap_slot*
-swap_slot_write (void *frame, struct thread *t)
+swap_slot_write (void *frame)
 {
 	off_t pos;
 	struct swap_slot *ss = NULL;
@@ -73,7 +73,7 @@ swap_slot_write (void *frame, struct thread *t)
 		if (start != disk_size(swap_disk)+1)
 		{
 			ss = malloc (sizeof (struct swap_slot));
-			ss->tid = t->tid;
+			//ss->tid = t->tid;
 			ss->start = start;
 			
 			/* Write to the swap disk from frame. */

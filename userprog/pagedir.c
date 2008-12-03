@@ -99,10 +99,11 @@ lookup_page (uint32_t *pd, const void *vaddr, bool create)
    Returns true if successful, false if memory allocation
    failed. */
 bool
-pagedir_set_page (uint32_t *pd, void *upage, void *kpage, bool writable)
+pagedir_set_page (uint32_t *pd, void *upage, struct frame *frame, bool writable)
 {
   uint32_t *pte;
-
+  void *kpage = frame->user_page;
+  
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (pg_ofs (kpage) == 0);
   ASSERT (is_user_vaddr (upage));
@@ -110,7 +111,8 @@ pagedir_set_page (uint32_t *pd, void *upage, void *kpage, bool writable)
   ASSERT (pd != base_page_dir);
 
   pte = lookup_page (pd, upage, true);
-
+  frame->PTE = pte;
+  
   if (pte != NULL) 
     {
       ASSERT ((*pte & PTE_P) == 0);
@@ -169,7 +171,7 @@ pagedir_clear_page (uint32_t *pd, void *upage)
    Returns true on success, false if UPAGE is already mapped or
    if memory allocation fails. */
 bool
-install_page (void *upage, void *kpage, bool writable)
+install_page (void *upage, struct frame *frame, bool writable)
 {
   struct thread *t = thread_current ();
 
@@ -179,11 +181,12 @@ install_page (void *upage, void *kpage, bool writable)
 //     printf("page found while trying to install page\n");
     return false;
   }
-  if (!pagedir_set_page (t->pagedir, upage, kpage, writable)) {
+  if (!pagedir_set_page (t->pagedir, upage, frame, writable)) {
 //     printf("unable to map kpage 0x%08x into upage 0x%08x as %s\n",
 //         (unsigned)kpage, (unsigned)upage, writable ? "writable" : "read-only");
     return false;
   }
+  
   return true;
 }
 

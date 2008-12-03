@@ -182,11 +182,13 @@ page_fault (struct intr_frame *f)
   }
 
   /* Get a page of memory. */
-  uint8_t *kpage = ft_get_page (PAL_USER);
-  if (kpage == NULL){
+  struct frame *frame = ft_get_page (PAL_USER, false);   
+  if (frame == NULL){
     printf ("Unable to get a page of memory to handle a page fault\n");
     exit (-1);
   }
+  uint8_t *kpage = frame->user_page;
+
   bool writable = true;
   switch (gen_page->type) {
   case EXEC:
@@ -228,7 +230,7 @@ page_fault (struct intr_frame *f)
     user = user; // stupid c parser
     struct swap_page *swap_page = (struct swap_page*) gen_page;
     struct swap_slot slot;
-    slot.tid = thread_current ()->tid;
+    //slot.tid = thread_current ()->tid;
     slot.start = swap_page->sector;
 
     swap_slot_read (kpage, &slot);
@@ -237,6 +239,7 @@ page_fault (struct intr_frame *f)
     memset (kpage, 0, PGSIZE);
     break;
   case STACK:
+	frame->is_stack = true;
     if (fault_addr + 32 < esp){
 //       printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, esp);
       goto page_fault; //not legitimate stack growth
@@ -247,7 +250,7 @@ page_fault (struct intr_frame *f)
 
 
   /* Add the page to the process's address space. */
-  if (!install_page ((void *)fault_page, kpage, writable)) {
+  if (!install_page ((void *)fault_page, frame, writable)) {
     ft_free_page (kpage);
     exit (-1);
   }

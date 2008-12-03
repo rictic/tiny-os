@@ -1,7 +1,10 @@
 #include <debug.h>
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
+#include "threads/interrupt.h"
+#include "threads/pte.h"
 
 /* List of used frame. */
 static struct list frame_list;
@@ -9,34 +12,53 @@ static struct list frame_list;
 /* Lock for the frame table. */
 static struct lock frame_lock;
 
+/* A frame structure pointer, named hand, for pointing a frame to evict. */
+static struct list_elem *hand;
+
+static struct frame *ft_replacement (void);
+static inline void check_and_set_hand (void);
+
 /* Initialize the frame table. */
 void
 ft_init (void) 
 {
   list_init (&frame_list);
   lock_init (&frame_lock);
+  
+  hand = &frame_list.head;
 }
 
 /* Get a user page from user pool, and add to our frame table if successful. */
-void *
-ft_get_page (enum palloc_flags flags)
+struct frame *
+ft_get_page (enum palloc_flags flags, bool is_stack)
 {
 	ASSERT (flags & PAL_USER);
 
 	void *page = palloc_get_page (flags);
+	struct frame *f = NULL;
 	
 	if (page != NULL)
 	{
-		struct frame *f = malloc (sizeof (struct frame));
+		f = malloc (sizeof (struct frame));
 		f->tid = thread_current()->tid;
+		f->is_stack = is_stack;
 		f->user_page = page;
 	
 		lock_acquire (&frame_lock);
 		list_push_back(&frame_list, &f->ft_elem);
 		lock_release (&frame_lock);
 	}
+	else
+	{
+		f = ft_replacement();
+
+		/* Clear all the information for this frame. */
+		f->tid = thread_current()->tid;
+		f->is_stack = is_stack;
+		f->user_page = page;
+	}	
 	
-	return page;
+	return f;
 }
 
 /* Free an allocated page and also remove the page reference in the frame table. */
@@ -88,4 +110,77 @@ ft_destroy (struct thread *t)
 	}
 	
 	lock_release (&frame_lock);
+}
+
+static struct frame *
+ft_replacement (void)
+{
+	lock_acquire (&frame_lock);
+
+	ASSERT (!list_empty(&frame_list));
+
+	//if (hand == &frame_list->head)
+		//hand = hand->next;
+	check_and_set_hand();
+	
+	struct frame *f = list_entry(hand, struct frame, ft_elem);
+	uint32_t *pte = f->PTE;
+	
+	enum intr_level old_level;
+	old_level = intr_disable ();
+	
+	/* Second Chance replacement algorithm. */
+	/* Choose one page with Access bit not set. */
+	while ((*pte & PTE_A) != 0)
+	{
+		*pte &= ~(uint32_t) PTE_A;
+		
+		hand = list_remove(hand);
+		list_push_back(&frame_list, &f->ft_elem);
+		
+		check_and_set_hand();
+
+		//if (hand == list_end(&frame_list))
+			//hand = list_begin(&frame_list);
+		
+		f = list_entry(hand, struct frame, ft_elem);
+		pte = f->PTE;
+	}
+	
+	/* If this page is for stack or has been written by CPU, save it to SWAP. */
+	if (f->is_stack || (*pte & PTE_D) != 0)
+	{
+		struct swap_slot *ss = swap_slot_write(f->user_page);
+	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
+	    
+	    swap_page->type = SWAP;
+	    swap_page->virtual_page = (uint32_t)f->user_page;
+	    swap_page->sector = ss->start;
+	    add_lazy_page ((struct special_page_elem*)swap_page);
+	}
+	
+	/* Clear all the information for this frame. */
+	f->tid = NULL;
+	f->is_stack = NULL;
+	f->user_page = NULL;
+	f->PTE = NULL;
+	
+	intr_set_level (old_level);
+	
+	hand = list_next(hand);
+	check_and_set_hand();
+
+	lock_release (&frame_lock);
+
+	return f;
+}
+
+static inline void 
+check_and_set_hand (void)
+{
+	if (hand == &frame_list.head)
+		hand = list_next(hand);
+	
+	if (hand == list_end(&frame_list))
+		hand = list_begin(&frame_list);
 }
