@@ -10,8 +10,8 @@ struct frame
 {
     tid_t tid;                          /* Thread identifier. */
     bool is_stack;						/* Whether this frame belonging to stack segment. */
-	uint32_t *user_page;				/* the pointer to the used user frame. */
-	uint32_t *PTE;						/* the page table entry for the user page. */
+    uint32_t *user_page;				/* the pointer to the used user frame. */
+    uint32_t *PTE;						/* the page table entry for the user page. */
     struct list_elem ft_elem;         	/* List frame element. */
 };
 
