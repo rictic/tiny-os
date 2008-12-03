@@ -220,13 +220,14 @@ page_fault (struct intr_frame *f)
     struct file_page *file_page = (struct file_page*) gen_page;
     lock_acquire (&filesys_lock);
     file_seek (file_page->source_file, file_page->offset);
-    if (file_read (file_page->source_file, kpage, file_page->zero_after)
+    /*if (file_read (file_page->source_file, kpage, file_page->zero_after)
         != (int) file_page->zero_after) {
       ft_free_page (kpage);
       printf ("Unable to read in mmaped file in page fault handler\n");
       lock_release (&filesys_lock);
       exit (-1);  
-    }
+    }*/
+    file_read (file_page->source_file, kpage, file_page->zero_after);
     lock_release (&filesys_lock);
     //if we really need to zero after, then we should just use one handler
     // for both exec files and mmaped files

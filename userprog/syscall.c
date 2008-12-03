@@ -289,7 +289,7 @@ static void munmap (int mapping)
         file_write_at (file, addr, file_page->zero_after, file_page->offset);
         lock_release (&filesys_lock);
       }
-      ft_free_page (kpage);
+      //ft_free_page (kpage);
     } 
         
     hash_delete (&cur->sup_pagetable, &file_page->elem);
