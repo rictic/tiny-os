@@ -3,6 +3,8 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 
+uint32_t stack_bottom_addr;				/* the bottom address of stack. */
+
 enum special_page {
   EXEC,
   FILE,
@@ -49,6 +51,8 @@ struct swap_page {
   struct hash_elem elem;
   uint32_t virtual_page;
   disk_sector_t sector; //sector where the disk starts
+  bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
+  enum special_page type_before; //page type before swaping
 };
 
 struct zero_page {
