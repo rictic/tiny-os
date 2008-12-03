@@ -13,6 +13,7 @@
 #include "userprog/process.h"
 #include "userprog/syscall.h"
 #include "userprog/pagedir.h"
+#include "threads/malloc.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -212,27 +213,23 @@ page_fault (struct intr_frame *f)
     lock_release (&filesys_lock);
     memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
     writable = exec_page->writable;
-    
-    frame->type = EXEC;
     break;
   case FILE:
     user = user;
     struct file_page *file_page = (struct file_page*) gen_page;
     lock_acquire (&filesys_lock);
     file_seek (file_page->source_file, file_page->offset);
-    /*if (file_read (file_page->source_file, kpage, file_page->zero_after)
+    if (file_read (file_page->source_file, kpage, file_page->zero_after)
         != (int) file_page->zero_after) {
       ft_free_page (kpage);
       printf ("Unable to read in mmaped file in page fault handler\n");
       lock_release (&filesys_lock);
       exit (-1);  
-    }*/
-    file_read (file_page->source_file, kpage, file_page->zero_after);
+    }
     lock_release (&filesys_lock);
     //if we really need to zero after, then we should just use one handler
     // for both exec files and mmaped files
     memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
-    frame->type = FILE;
     break;
   case SWAP:
     user = user; // stupid c parser
@@ -251,7 +248,7 @@ page_fault (struct intr_frame *f)
     break;
   case ZERO:
     memset (kpage, 0, PGSIZE);
-    frame->type = ZERO;
+    
     break;
   case STACK:
     if (fault_addr + 32 < esp){
@@ -259,14 +256,13 @@ page_fault (struct intr_frame *f)
       goto page_fault; //not legitimate stack growth
     }
 
-	stack_bottom_addr -= PGSIZE;
+  	stack_bottom_addr -= PGSIZE;
     
     struct stack_page *stack_page = (struct stack_page*) gen_page;
 
     //delete stack_page in supplemental table.
     hash_delete (&cur->sup_pagetable, &stack_page->elem);
     free(stack_page); 
-    frame->type = STACK;
     break;
   }
 

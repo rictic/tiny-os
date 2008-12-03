@@ -177,7 +177,7 @@ ft_replacement (void)
 	/* Clear all the information for this frame. */
 	*pte &= ~(uint32_t) PGMASK;
 
-	f->tid = NULL;
+	f->tid = 0;
 	f->type = 0;
 	f->PTE = NULL;
 	
