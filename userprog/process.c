@@ -556,19 +556,18 @@ setup_stack (void **esp)
   unsigned offset = PGSIZE;
   struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, true); 
 
-  if (frame != NULL) {
-  	kpage = frame->user_page;
+  if (frame == NULL)
+    return false;
+  
+  kpage = frame->user_page;
 
-    if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
-      *esp = PHYS_BASE;
-    else {
-      ft_free_page (kpage);
-      return false;
-    }
+  if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
+    *esp = PHYS_BASE;
+  else {
+    ft_free_page (kpage);
+    return false;
   }
-  else
-	return false;
-
+  
   //map pages for stack growth
   for (offset += PGSIZE; offset <= PGSIZE * 2000; offset += PGSIZE) {
     struct stack_page *stack_page = malloc (sizeof (struct stack_page));
