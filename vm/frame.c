@@ -160,8 +160,8 @@ ft_replacement (void)
 	}
 	
 	/* Clear all the information for this frame. */
-	f->tid = NULL;
-	f->is_stack = NULL;
+  f->tid = 0;
+	f->is_stack = 0;
 	f->user_page = NULL;
 	f->PTE = NULL;
 	

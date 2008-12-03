@@ -552,12 +552,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
+  uint32_t *kpage;
   unsigned offset = PGSIZE;
   struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, true); 
 
   if (frame != NULL) {
-	kpage = frame->user_page;
+  	kpage = frame->user_page;
 
     if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
       *esp = PHYS_BASE;
@@ -573,7 +573,7 @@ setup_stack (void **esp)
   for (offset += PGSIZE; offset <= PGSIZE * 2000; offset += PGSIZE) {
     struct stack_page *stack_page = malloc (sizeof (struct stack_page));
     stack_page->type = STACK;
-    stack_page->virtual_page = PHYS_BASE-offset;
+    stack_page->virtual_page = (uint32_t)PHYS_BASE-offset;
     add_lazy_page ((struct special_page_elem*) stack_page);
   }
   return true;

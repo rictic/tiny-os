@@ -187,7 +187,7 @@ page_fault (struct intr_frame *f)
     printf ("Unable to get a page of memory to handle a page fault\n");
     exit (-1);
   }
-  uint8_t *kpage = frame->user_page;
+  uint32_t *kpage = frame->user_page;
 
   bool writable = true;
   switch (gen_page->type) {
