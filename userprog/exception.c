@@ -220,7 +220,7 @@ page_fault (struct intr_frame *f)
         exit (-1);
       }
       lock_release (&filesys_lock);
-      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
+      memset ((uint8_t *)kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
       writable = exec_page->writable;
       break;
     case FILE:
