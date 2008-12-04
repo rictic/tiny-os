@@ -4,6 +4,9 @@
 #include "page.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
+#include "userprog/pagedir.h"
+#include "userprog/syscall.h"
+#include "threads/malloc.h"
 #include <stdio.h>
 
 static unsigned
@@ -74,6 +77,40 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
 void
 print_supplemental_page_table () {
   hash_apply (&thread_current ()->sup_pagetable, print_page_entry);
+}
+
+void
+expire_page (struct special_page_elem * gen_page) {
+  struct thread *cur = thread_current ();
+  void *kpage = pagedir_get_page (cur->pagedir, (void *)gen_page->virtual_page);
+  if (kpage != NULL){
+    switch(gen_page->type) {
+    case FILE:
+      noop ();
+      struct file_page *file_page = (struct file_page *)gen_page;
+      if (pagedir_is_dirty (cur->pagedir, (void *)file_page->virtual_page)) {
+        lock_acquire (&filesys_lock);
+        file_write_at (file_page->source_file, (void *)file_page->virtual_page, 
+                       file_page->zero_after, file_page->offset);
+        lock_release (&filesys_lock);
+      }
+      break;
+    default:
+      break;
+    }
+//     ft_free_page(kpage);
+  }
+  hash_delete (&cur->sup_pagetable, &gen_page->elem);
+  free(gen_page);
+}
+
+static void expire_page_hf (struct hash_elem *element, void *aux UNUSED) {
+  expire_page (hash_entry (element, struct special_page_elem, elem));
+}
+
+void
+destroy_supplemental_pagetable (struct hash *sup_pagetable) {
+  hash_destroy (sup_pagetable, expire_page_hf);
 }
 
 bool

@@ -59,11 +59,12 @@ struct zero_page {
   uint32_t virtual_page;
 };
 
-void init_supplemental_pagetable (struct hash *sup_pagetable);
+void init_supplemental_pagetable (struct hash *);
+void destroy_supplemental_pagetable (struct hash *);
 struct special_page_elem * add_lazy_page (struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
-
+void expire_page (struct special_page_elem * gen_page);
 void print_supplemental_page_table (void);
 
 static void noop (void);
