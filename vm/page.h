@@ -3,8 +3,6 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 
-uint32_t stack_bottom_addr;				/* the bottom address of stack. */
-
 enum special_page {
   EXEC,
   FILE,
