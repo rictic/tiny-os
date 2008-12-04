@@ -160,14 +160,17 @@ ft_replacement (void)
 	/* If this page is for stack or has been written by CPU, save it to SWAP. */
 	if (f->type == STACK || (*pte & PTE_D) != 0)
 	{
+		intr_set_level (old_level);
 		struct swap_slot *ss = swap_slot_write(f->user_page);
+		old_level = intr_disable ();
+
 	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
 	    
 	    if (ss == NULL)
 	    	return NULL;
 	    
 	    swap_page->type = SWAP;
-	    swap_page->virtual_page = (uint32_t)f->user_page;
+	    swap_page->virtual_page = (uint32_t)f->virtual_address;
 	    swap_page->sector = ss->start;
 	    swap_page->dirty = *pte & PTE_D;
 	    swap_page->type_before = f->type;

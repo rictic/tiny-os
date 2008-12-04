@@ -563,6 +563,7 @@ setup_stack (void **esp)
     {
         *esp = PHYS_BASE;
     	stack_bottom_addr = (uint32_t)(((uint8_t *) PHYS_BASE) - offset);
+    	frame->virtual_address = stack_bottom_addr;    	
     }	
     else {
       ft_free_page (kpage);
