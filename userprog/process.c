@@ -553,35 +553,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-<<<<<<< HEAD:userprog/process.c
-  uint8_t *kpage;
-  unsigned offset = PGSIZE;
-  struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, STACK); 
-
-  if (frame != NULL) {
-	kpage = frame->user_page;
-
-    if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
-    {
-        *esp = PHYS_BASE;
-    	stack_bottom_addr = (uint32_t)(((uint8_t *) PHYS_BASE) - offset);
-    	frame->virtual_address = stack_bottom_addr;    	
-    }	
-    else {
-      ft_free_page (kpage);
-      return false;
-    }
-  }
-  else
-	return false;
-
-  //map pages for stack growth
-  for (offset += PGSIZE; offset <= PGSIZE * 2000; offset += PGSIZE) {
-    struct stack_page *stack_page = malloc (sizeof (struct stack_page));
-    stack_page->type = STACK;
-    stack_page->virtual_page = PHYS_BASE-offset;
-    add_lazy_page ((struct special_page_elem*) stack_page);
-=======
   struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO); 
   frame->type = NORMAL;
   if (frame == NULL)
@@ -590,9 +561,9 @@ setup_stack (void **esp)
   if (!install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame, true)){
     ft_free (frame);
     return false;
->>>>>>> peter/master:userprog/process.c
   }
   *esp = PHYS_BASE;
+  frame->virtual_address = (uint32_t)(((uint8_t *) PHYS_BASE) - PGSIZE);  
 
   return true;
 }

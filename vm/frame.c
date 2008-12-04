@@ -62,8 +62,15 @@ ft_get_page (enum palloc_flags flags)
 
 void
 ft_free (struct frame *frame) {
+
+  lock_acquire (&frame_lock);
+
+  list_remove (&frame->ft_elem);
   ft_free_page (frame->user_page);
   free (frame);
+  
+  lock_release (&frame_lock);
+
 }
 
 /* Free an allocated page and also remove the page reference in the frame table. */
@@ -124,8 +131,6 @@ ft_replacement (void)
 
 	ASSERT (!list_empty(&frame_list));
 
-	//if (hand == &frame_list->head)
-		//hand = hand->next;
 	check_and_set_hand();
 	
 	struct frame *f = list_entry(hand, struct frame, ft_elem);
@@ -144,9 +149,6 @@ ft_replacement (void)
 		list_push_back(&frame_list, &f->ft_elem);
 		
 		check_and_set_hand();
-
-		//if (hand == list_end(&frame_list))
-			//hand = list_begin(&frame_list);
 		
 		f = list_entry(hand, struct frame, ft_elem);
 		pte = f->PTE;
@@ -156,21 +158,28 @@ ft_replacement (void)
   	switch(f->type){
   	  case (FILE):
         noop ();
-  	    struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->user_page);
+  	    struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->virtual_address);
     		ASSERT (file_page != NULL);
 
-    		file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
+    		file_write_at (file_page->source_file, file_page->virtual_page, file_page->zero_after, file_page->offset);
         break;
       default:
         noop ();
+    	intr_set_level (old_level);
         struct swap_slot *ss = swap_slot_write(f->user_page);
+    	old_level = intr_disable ();
+
   	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
 
   	    if (ss == NULL)
+  	    {
+  	    	intr_set_level (old_level);
+  	    	lock_release (&frame_lock);
   	    	return NULL;
+  	    }	
 
   	    swap_page->type = SWAP;
-  	    swap_page->virtual_page = (uint32_t)f->user_page;
+  	    swap_page->virtual_page = (uint32_t)f->virtual_address;
   	    swap_page->sector = ss->start;
   	    swap_page->dirty = *pte & PTE_D;
   	    swap_page->type_before = f->type;
@@ -183,6 +192,7 @@ ft_replacement (void)
 	f->tid = 0;
 	f->type = 0;
 	f->PTE = NULL;
+	f->virtual_address = NULL;
 	
 	intr_set_level (old_level);
 	
