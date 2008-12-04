@@ -22,6 +22,7 @@
 #include "vm/frame.h"
 #include "threads/malloc.h"
 
+
 static thread_func execute_thread NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -552,28 +553,16 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint32_t *kpage;
-  unsigned offset = PGSIZE;
-  struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO, STACK); 
-
+  struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO); 
+  frame->type = NORMAL;
   if (frame == NULL)
     return false;
   
-  kpage = frame->user_page;
-
-  if (install_page (((uint8_t *) PHYS_BASE) - offset, frame, true))
-    *esp = PHYS_BASE;
-  else {
-    ft_free_page (kpage);
+  if (!install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame, true)){
+    ft_free (frame);
     return false;
   }
-  
-  //map pages for stack growth
-  for (offset += PGSIZE; offset <= PGSIZE * 2000; offset += PGSIZE) {
-    struct stack_page *stack_page = malloc (sizeof (struct stack_page));
-    stack_page->type = STACK;
-    stack_page->virtual_page = (uint32_t)PHYS_BASE-offset;
-    add_lazy_page ((struct special_page_elem*) stack_page);
-  }
+  *esp = PHYS_BASE;
+
   return true;
 }

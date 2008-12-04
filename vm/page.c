@@ -40,8 +40,6 @@ find_lazy_page (uint32_t ptr) {
   return hash_entry(elem, struct special_page_elem, elem);
 }
 
-static void noop(void);
-static inline void noop() {} 
 static inline void print_file(struct file *file) {
   printf ("file at sector ");
   print_inode_location (file->inode);
@@ -67,7 +65,7 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
     break;
   case ZERO:
     break;
-  case STACK:
+  case NORMAL:
     break;
   }
   printf("\n");

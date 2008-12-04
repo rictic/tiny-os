@@ -17,8 +17,9 @@ struct frame
 };
 
 void ft_init (void);
-struct frame *ft_get_page (enum palloc_flags flags, enum special_page type);
-void ft_free_page (void *page);
-void ft_destroy (struct thread *t);
+struct frame *ft_get_page (enum palloc_flags);
+void ft_free_page (void *);
+void ft_free (struct frame *);
+void ft_destroy (struct thread *);
 
 #endif /*VM_FRAME_H_*/
