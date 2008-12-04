@@ -243,17 +243,16 @@ page_fault (struct intr_frame *f)
     case SWAP:
       user = user; // stupid c parser
       struct swap_page *swap_page = (struct swap_page*) gen_page;
-      struct swap_slot slot;
+      struct swap_slot *ss;
       //slot.tid = thread_current ()->tid;
-      slot.start = swap_page->sector;
+      ss = swap_page->slot;
       dirty = swap_page->dirty;
-      swap_slot_read (kpage, &slot);
+      swap_slot_read (kpage, ss);
+      frame->type = swap_page->type_before;
     
       //delete swap_page in supplemental table.
       hash_delete (&cur->sup_pagetable, &swap_page->elem);
       free(swap_page);
-    
-      frame->type = swap_page->type_before;
       break;
     case ZERO:
       memset (kpage, 0, PGSIZE);

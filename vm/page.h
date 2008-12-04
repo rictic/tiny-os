@@ -48,7 +48,8 @@ struct swap_page {
   enum special_page type;
   struct hash_elem elem;
   uint32_t virtual_page;
-  disk_sector_t sector; //sector where the disk starts
+  struct swap_slot *slot;
+  //disk_sector_t sector; //sector where the disk starts
   bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
   enum special_page type_before; //page type before swaping
 };

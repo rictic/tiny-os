@@ -60,19 +60,6 @@ ft_get_page (enum palloc_flags flags)
 	return f;
 }
 
-void
-ft_free (struct frame *frame) {
-
-  lock_acquire (&frame_lock);
-
-  list_remove (&frame->ft_elem);
-  ft_free_page (frame->user_page);
-  free (frame);
-  
-  lock_release (&frame_lock);
-
-}
-
 /* Free an allocated page and also remove the page reference in the frame table. */
 void
 ft_free_page (void *page)
@@ -180,7 +167,7 @@ ft_replacement (void)
 
   	    swap_page->type = SWAP;
   	    swap_page->virtual_page = (uint32_t)f->virtual_address;
-  	    swap_page->sector = ss->start;
+  	    swap_page->slot = ss;
   	    swap_page->dirty = *pte & PTE_D;
   	    swap_page->type_before = f->type;
   	    add_lazy_page ((struct special_page_elem*)swap_page);

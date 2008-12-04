@@ -559,7 +559,7 @@ setup_stack (void **esp)
     return false;
   
   if (!install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame, true)){
-    ft_free (frame);
+	  ft_free_page (frame->user_page);
     return false;
   }
   *esp = PHYS_BASE;
