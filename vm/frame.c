@@ -40,7 +40,8 @@ ft_get_page (enum palloc_flags flags)
 	if (page != NULL)
 	{
 		f = malloc (sizeof (struct frame));
-		f->tid = thread_current()->tid;
+		f->t = thread_current();
+		//f->tid = thread_current()->tid;
 		f->user_page = page;
 	
 		lock_acquire (&frame_lock);
@@ -53,8 +54,9 @@ ft_get_page (enum palloc_flags flags)
 
 		if (f == NULL)
 			return NULL;
-		/* Clear all the information for this frame. */
-		f->tid = thread_current()->tid;
+
+		f->t = thread_current();
+		//f->tid = thread_current()->tid;
 	}
 	
 	return f;
@@ -98,7 +100,7 @@ ft_destroy (struct thread *t)
 	{
 		struct frame *f = list_entry(elem, struct frame, ft_elem);
 		
-		if (f->tid == t->tid)
+		if (f->t == t)
 		{
 			list_remove(elem);
 			elem = list_next(elem);
@@ -114,6 +116,10 @@ ft_destroy (struct thread *t)
 static struct frame *
 ft_replacement (void)
 {
+	struct thread *cur = thread_current();
+	struct thread *evict_t;
+	//struct bool thread_status_modified = false;
+	
 	lock_acquire (&frame_lock);
 
 	ASSERT (!list_empty(&frame_list));
@@ -121,6 +127,17 @@ ft_replacement (void)
 	check_and_set_hand();
 	
 	struct frame *f = list_entry(hand, struct frame, ft_elem);
+	
+	evict_t = f->t;
+	/*if (evict_t != cur && evict_t->status == THREAD_READY)
+	{
+		old_level = intr_disable ();
+		list_remove(evict_t->elem);
+		thread_current ()->status = THREAD_BLOCKED;
+		thread_status_modified = true;
+		intr_set_level (old_level);
+	}*/
+
 	uint32_t *pte = f->PTE;
 	
 	enum intr_level old_level;
@@ -130,17 +147,27 @@ ft_replacement (void)
 	/* Choose one page with Access bit not set. */
 	while ((*pte & PTE_A) != 0)
 	{
-		*pte &= ~(uint32_t) PTE_A;
+		//*pte &= ~(uint32_t) PTE_A;
+		pagedir_set_accessed (evict_t->pagedir, f->virtual_address, false);
 		
 		hand = list_remove(hand);
 		list_push_back(&frame_list, &f->ft_elem);
 		
 		check_and_set_hand();
 		
+		//if (evict_t != cur)
+			//sema_up (&evict_t->page_sema);
+		
 		f = list_entry(hand, struct frame, ft_elem);
+		
+		evict_t = f->t;
+		/*if (evict_t != cur)
+			sema_down (&evict_t->page_sema);*/
+		
 		pte = f->PTE;
 	}
 	
+	//if ((*pte & PTE_D) != 0) {
 	if ((*pte & PTE_D) != 0) {
   	switch(f->type){
   	  case (FILE):
@@ -161,6 +188,10 @@ ft_replacement (void)
   	    if (ss == NULL)
   	    {
   	    	intr_set_level (old_level);
+  	   
+  	    	/*if (evict_t != cur)
+  				sema_up (&evict_t->page_sema);*/
+  	    	
   	    	lock_release (&frame_lock);
   	    	return NULL;
   	    }	
@@ -175,11 +206,17 @@ ft_replacement (void)
 	}
 
 	/* Clear all the information for this frame. */
-	*pte &= ~(uint32_t) PGMASK;
-	f->tid = 0;
+	//*pte &= ~(uint32_t) PGMASK;
+	pagedir_clear_page(evict_t->pagedir, f->virtual_address);
+	
+	//f->tid = 0;
+	f->t = NULL;
 	f->type = 0;
 	f->PTE = NULL;
 	f->virtual_address = NULL;
+	
+	//if (evict_t != cur)
+		//sema_up (&evict_t->page_sema);
 	
 	intr_set_level (old_level);
 	

@@ -101,6 +101,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  //sema_down (&initial_thread->page_sema);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -260,6 +261,7 @@ thread_block (void)
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
 
+  //sema_up (&thread_current ()->page_sema);
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
 }
@@ -365,6 +367,8 @@ thread_exit (void)
   process_exit ();
 #endif
   
+  //sema_up (&t->page_sema);
+
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
@@ -386,6 +390,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
+  //sema_up (&cur->page_sema);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -524,6 +529,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->children);
   lock_init (&t->children_lock);
   t->exit_code = -1; //if we don't exit properly, then -1
+  //sema_init (&t->page_sema, 1);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -581,6 +587,8 @@ schedule_tail (struct thread *prev)
 
   /* Start new time slice. */
   thread_ticks = 0;
+
+  //sema_down (&cur->page_sema);
 
 #ifdef USERPROG
   /* Activate the new address space. */

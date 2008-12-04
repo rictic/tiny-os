@@ -120,6 +120,8 @@ struct thread
 
     struct file *(files[NUM_FD]);       /* File descriptor table */
     
+    //struct semaphore page_sema;         /* Semaphore on children list */
+    
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
