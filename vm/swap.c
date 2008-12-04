@@ -95,19 +95,31 @@ alloc_swap_slot (void)
 	
 	if (!list_empty (&free_swap_list))
 	{
-		struct free_swap_slot *free_ss = list_entry (list_pop_front(&free_swap_list), struct free_swap_slot, free_swap_elem);
-		if (free_ss->size >= SECTORS_PER_FRAME)
+		struct free_swap_slot *free_ss;
+	    struct list_elem *elem;
+
+		lforeach(elem, &free_swap_list)
+		{
+			free_ss = list_entry (elem, struct free_swap_slot, free_swap_elem);
+			if (free_ss->size >= SECTORS_PER_FRAME)
+				break;
+		}
+		
+		if (elem != list_end(&free_swap_list))
 		{
 			start = free_ss->start;
 			
 			if (free_ss->size == SECTORS_PER_FRAME)
+			{
+				list_remove(&free_ss->free_swap_elem);
 				free(free_ss);
+			}	
 			else
 			{
 				free_ss->start += SECTORS_PER_FRAME;
 				free_ss->size -= SECTORS_PER_FRAME;
-			}
-		}		
+			}			
+		}
 	}	
 
 	lock_release (&swap_lock);

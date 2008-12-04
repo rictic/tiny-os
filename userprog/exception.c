@@ -275,5 +275,7 @@ page_fault (struct intr_frame *f)
   /* Set dirty bit if this frame is dirty before swaping to the swap disk. */
   if (dirty)
 	  *frame->PTE |= PTE_D;
+  
+  frame->virtual_address = fault_page;
 }
 
