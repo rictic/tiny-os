@@ -211,10 +211,13 @@ static int mmap (int fd, void *addr)
   if (  file == NULL        //the file descriptor isn't a file
      || addr < (void *)PGSIZE       //we're trying to map the zero page
      || ((uint32_t)addr & 0x00000fff) != 0  //or the addr isn't page aligned
-     || (uint32_t)addr >= stack_bottom_addr) //or the addr is trying to map above the stack address.
-    return -1;
-
-  lock_acquire (&filesys_lock);
+     || addr >= STACK_BOTTOM) //or the addr is trying to map above the stack address.
+     {
+    return -1;   
+   }
+  
+  lock_acquire (&filesys_lock);  
+  file = file_reopen (file);
   /* Fail if the file is 0 empty, or the page is already taken */
   uint32_t read_bytes = file_length(file);
   if (read_bytes == 0 || !validate_free_page (addr, read_bytes)) {
@@ -225,6 +228,8 @@ static int mmap (int fd, void *addr)
   /* Otherwise, fulfill the file mapping. */
   off_t ofs = 0;
   int mapping = (int)addr; // Use the virtual address as mapping id.
+
+  
   while (read_bytes > 0) 
   {
     /* Calculate how to fill this page.
@@ -233,6 +238,7 @@ static int mmap (int fd, void *addr)
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     
     struct file_page *file_page = malloc (sizeof (struct file_page));
+    
     file_page->type = FILE;
     file_page->virtual_page = (uint32_t)addr;
     file_page->source_file = file;
@@ -255,7 +261,7 @@ static int mmap (int fd, void *addr)
 static void munmap (int mapping)
 {
   if ((mapping & 0x00000fff) != 0
-	 || (uint32_t)mapping >= stack_bottom_addr)
+	 || (uint32_t)mapping >= STACK_BOTTOM)
     return;
 
   struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
@@ -297,6 +303,9 @@ static void munmap (int mapping)
     addr += PGSIZE;
     file_page = (struct file_page*) find_lazy_page((int)addr);
   }
+  lock_acquire (&filesys_lock);
+  file_close (file);
+  lock_release (&filesys_lock);
 }
 
 static void syscall_handler (struct intr_frame *);

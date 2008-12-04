@@ -30,7 +30,7 @@ ft_init (void)
 
 /* Get a user page from user pool, and add to our frame table if successful. */
 struct frame *
-ft_get_page (enum palloc_flags flags, enum special_page type)
+ft_get_page (enum palloc_flags flags)
 {
 	ASSERT (flags & PAL_USER);
 
@@ -41,7 +41,6 @@ ft_get_page (enum palloc_flags flags, enum special_page type)
 	{
 		f = malloc (sizeof (struct frame));
 		f->tid = thread_current()->tid;
-		f->type = type;
 		f->user_page = page;
 	
 		lock_acquire (&frame_lock);
@@ -56,10 +55,15 @@ ft_get_page (enum palloc_flags flags, enum special_page type)
 			return NULL;
 		/* Clear all the information for this frame. */
 		f->tid = thread_current()->tid;
-		f->type = type;
-	}	
+	}
 	
 	return f;
+}
+
+void
+ft_free (struct frame *frame) {
+  ft_free_page (frame->user_page);
+  free (frame);
 }
 
 /* Free an allocated page and also remove the page reference in the frame table. */
@@ -148,39 +152,35 @@ ft_replacement (void)
 		pte = f->PTE;
 	}
 	
-	/* If this page is for FILE, write it back to that file. */
-	if (f->type == FILE && (*pte & PTE_D) != 0)
-	{
-		struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->user_page);
-		ASSERT (file_page != NULL);
-		
-		file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
-	}			
-	
-	/* If this page is for stack or has been written by CPU, save it to SWAP. */
-	if (f->type == STACK || (*pte & PTE_D) != 0)
-	{
-		intr_set_level (old_level);
-		struct swap_slot *ss = swap_slot_write(f->user_page);
-		old_level = intr_disable ();
+	if ((*pte & PTE_D) != 0) {
+  	switch(f->type){
+  	  case (FILE):
+        noop ();
+  	    struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->user_page);
+    		ASSERT (file_page != NULL);
 
-	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
-	    
-	    if (ss == NULL)
-	    	return NULL;
-	    
-	    swap_page->type = SWAP;
-	    swap_page->virtual_page = (uint32_t)f->virtual_address;
-	    swap_page->sector = ss->start;
-	    swap_page->dirty = *pte & PTE_D;
-	    swap_page->type_before = f->type;
-	    add_lazy_page ((struct special_page_elem*)swap_page);
+    		file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
+        break;
+      default:
+        noop ();
+        struct swap_slot *ss = swap_slot_write(f->user_page);
+  	    struct swap_page *swap_page = malloc (sizeof (struct swap_page));
+
+  	    if (ss == NULL)
+  	    	return NULL;
+
+  	    swap_page->type = SWAP;
+  	    swap_page->virtual_page = (uint32_t)f->user_page;
+  	    swap_page->sector = ss->start;
+  	    swap_page->dirty = *pte & PTE_D;
+  	    swap_page->type_before = f->type;
+  	    add_lazy_page ((struct special_page_elem*)swap_page);
+  	}
 	}
-	
+
 	/* Clear all the information for this frame. */
 	*pte &= ~(uint32_t) PGMASK;
-
-	f->tid = NULL;
+	f->tid = 0;
 	f->type = 0;
 	f->PTE = NULL;
 	

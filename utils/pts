@@ -1,0 +1,2 @@
+#! /usr/bin/env bash
+pintos -v -k -T 2 --qemu  --fs-disk=2 -p tests/$1 -a prog --swap-disk=4 -- -q   -f run prog

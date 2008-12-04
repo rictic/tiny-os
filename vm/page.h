@@ -3,16 +3,14 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 
-uint32_t stack_bottom_addr;				/* the bottom address of stack. */
-
 enum special_page {
   EXEC,
   FILE,
   SWAP,
   ZERO,
-  STACK
+  NORMAL
 };
-static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "STACK"};
+static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "NORMAL"};
 inline static const char * special_page_name(const enum special_page page_num) {
   return special_page_names[page_num];
 }
@@ -61,17 +59,13 @@ struct zero_page {
   uint32_t virtual_page;
 };
 
-struct stack_page {
-  enum special_page type;
-  struct hash_elem elem;
-  uint32_t virtual_page;
-};
-
-
 void init_supplemental_pagetable (struct hash *sup_pagetable);
 struct special_page_elem * add_lazy_page (struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
 
 void print_supplemental_page_table (void);
+
+static void noop (void);
+static inline void noop() {}
 #endif /*VM_PAGE_H_*/

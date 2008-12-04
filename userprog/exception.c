@@ -13,6 +13,7 @@
 #include "userprog/process.h"
 #include "userprog/syscall.h"
 #include "userprog/pagedir.h"
+#include "threads/malloc.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -117,6 +118,18 @@ kill (struct intr_frame *f)
     }
 }
 
+static const char *(strs[]) = {"false", "true"};
+static inline const char* b(bool val) {return strs[val];}
+static inline bool
+is_stack_access (void * address, void * esp) {
+//   printf("%s, %s, %s\n", b(address <= PHYS_BASE),
+//     b(address > STACK_BOTTOM), b(address + 32 >= esp));
+//   printf("%08x + 32 >= %08x\n", address, esp);
+  return (address < PHYS_BASE) 
+      && (address > STACK_BOTTOM) 
+      && (address + 32 >= esp);
+}
+
 /* Page fault handler.  This is a skeleton that must be filled in
    to implement virtual memory.  Some solutions to project 2 may
    also require modifying this code.
@@ -161,115 +174,97 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  esp = f->esp;
-  if (f->cs == SEL_KCSEG)
-    esp = cur->esp;
-
+  esp = f->cs == SEL_KCSEG ? cur->esp : f->esp;
   gen_page = find_lazy_page (fault_page);
-  if (gen_page == NULL) {
-    page_fault:
-    switch (f->cs)
-  	{
+
+  bool stack_access = is_stack_access(fault_addr, esp);
+  if (gen_page == NULL && !stack_access) {
+    switch (f->cs) {
   	case SEL_KCSEG:
   		f->eip = (void *)f->eax;
   		f->eax = -1;
       return;
   	default:
-//       printf ("Page fault at %p: %s error %s page in %s context.\n",
-//   	          fault_addr,
-//   	          not_present ? "not present" : "rights violation",
-//   	          write ? "writing" : "reading",
-//   	          user ? "user" : "kernel");
   	  exit (-1);	
   	}
   }
-
+  
   /* Get a page of memory. */
-  struct frame *frame = ft_get_page (PAL_USER, gen_page->type);   
+  struct frame *frame = ft_get_page (PAL_USER);   
   if (frame == NULL){
     printf ("Unable to get a page of memory to handle a page fault\n");
     exit (-1);
   }
-  uint8_t *kpage = frame->user_page;
+  uint32_t *kpage = frame->user_page;
 
   bool writable = true;
   bool dirty = false;
-  switch (gen_page->type) {
-  case EXEC:
-    user = user; //why is this line needed?  Crazy C syntax
-    struct exec_page *exec_page = (struct exec_page*) gen_page;
-
-    lock_acquire (&filesys_lock);
-    /* Load this page. */
-    file_seek (exec_page->elf_file, exec_page->offset);
-    if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
-        != (int) exec_page->zero_after) {
-      ft_free_page (kpage);
-      printf("Unable to read in exec file in page fault handler\n");
-      lock_release (&filesys_lock);
-      exit (-1);
-    }
-    lock_release (&filesys_lock);
-    memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
-    writable = exec_page->writable;
-    
-    frame->type = EXEC;
-    break;
-  case FILE:
-    user = user;
-    struct file_page *file_page = (struct file_page*) gen_page;
-    lock_acquire (&filesys_lock);
-    file_seek (file_page->source_file, file_page->offset);
-    /*if (file_read (file_page->source_file, kpage, file_page->zero_after)
-        != (int) file_page->zero_after) {
-      ft_free_page (kpage);
-      printf ("Unable to read in mmaped file in page fault handler\n");
-      lock_release (&filesys_lock);
-      exit (-1);  
-    }*/
-    file_read (file_page->source_file, kpage, file_page->zero_after);
-    lock_release (&filesys_lock);
-    //if we really need to zero after, then we should just use one handler
-    // for both exec files and mmaped files
-    memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
-    frame->type = FILE;
-    break;
-  case SWAP:
-    user = user; // stupid c parser
-    struct swap_page *swap_page = (struct swap_page*) gen_page;
-    struct swap_slot slot;
-    //slot.tid = thread_current ()->tid;
-    slot.start = swap_page->sector;
-    dirty = swap_page->dirty;
-    swap_slot_read (kpage, &slot);
-    
-    //delete swap_page in supplemental table.
-    hash_delete (&cur->sup_pagetable, &swap_page->elem);
-    free(swap_page);
-    
-    frame->type = swap_page->type_before;
-    break;
-  case ZERO:
-    memset (kpage, 0, PGSIZE);
-    frame->type = ZERO;
-    break;
-  case STACK:
-    if (fault_addr + 32 < esp){
-//       printf("bad stack growth, fault address 0x%08x, stack pointer 0x%08x\n", fault_addr, esp);
-      goto page_fault; //not legitimate stack growth
-    }
-
-	stack_bottom_addr -= PGSIZE;
-    
-    struct stack_page *stack_page = (struct stack_page*) gen_page;
-
-    //delete stack_page in supplemental table.
-    hash_delete (&cur->sup_pagetable, &stack_page->elem);
-    free(stack_page); 
-    frame->type = STACK;
-    break;
+  if (gen_page == NULL && stack_access) {
+    frame->type = NORMAL;
   }
+  else {
+    frame->type = gen_page->type;
+    switch (gen_page->type) {
+    case EXEC:
+      user = user; //why is this line needed?  Crazy C syntax
+      struct exec_page *exec_page = (struct exec_page*) gen_page;
 
+      lock_acquire (&filesys_lock);
+      /* Load this page. */
+      file_seek (exec_page->elf_file, exec_page->offset);
+      if (file_read (exec_page->elf_file, kpage, exec_page->zero_after) 
+          != (int) exec_page->zero_after) {
+        ft_free_page (kpage);
+        printf("Unable to read in exec file in page fault handler\n");
+        lock_release (&filesys_lock);
+        exit (-1);
+      }
+      lock_release (&filesys_lock);
+      memset (kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
+      writable = exec_page->writable;
+      break;
+    case FILE:
+      user = user;
+      struct file_page *file_page = (struct file_page*) gen_page;
+      lock_acquire (&filesys_lock);
+      file_seek (file_page->source_file, file_page->offset);
+      if (file_read (file_page->source_file, kpage, file_page->zero_after)
+          != (int) file_page->zero_after) {
+        ft_free_page (kpage);
+        printf ("Unable to read in mmaped file in page fault handler\n");
+        lock_release (&filesys_lock);
+        exit (-1);  
+      }
+      lock_release (&filesys_lock);
+      //if we really need to zero after, then we should just use one handler
+      // for both exec files and mmaped files
+      memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
+      break;
+    case SWAP:
+      user = user; // stupid c parser
+      struct swap_page *swap_page = (struct swap_page*) gen_page;
+      struct swap_slot slot;
+      //slot.tid = thread_current ()->tid;
+      slot.start = swap_page->sector;
+      dirty = swap_page->dirty;
+      swap_slot_read (kpage, &slot);
+    
+      //delete swap_page in supplemental table.
+      hash_delete (&cur->sup_pagetable, &swap_page->elem);
+      free(swap_page);
+    
+      frame->type = swap_page->type_before;
+      break;
+    case ZERO:
+      memset (kpage, 0, PGSIZE);
+      hash_delete (&cur->sup_pagetable, &gen_page->elem);
+      free (gen_page);
+      break;
+    case NORMAL:
+      printf("Error, can't retrieve a NORMAL page\n");
+      exit(-1);
+    }
+  }
 
   /* Add the page to the process's address space. */
   if (!install_page ((void *)fault_page, frame, writable)) {
