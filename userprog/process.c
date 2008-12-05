@@ -528,14 +528,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     and zero the rest of the page. */
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
-    
+
     struct special_page_elem *gen_page;
     if (page_read_bytes == 0)
       gen_page = (struct special_page_elem*)new_zero_page ((uint32_t)upage);
     else
       gen_page = (struct special_page_elem*) 
                   new_exec_page ((uint32_t)upage, file, ofs, page_read_bytes, writable);
-    add_lazy_page (gen_page);
+    add_lazy_page (thread_current (), gen_page);
     
     /* Advance. */
     read_bytes -= page_read_bytes;

@@ -244,7 +244,7 @@ static int mmap (int fd, void *addr)
     file_page->source_file = file;
     file_page->offset = ofs;
     file_page->zero_after = page_read_bytes;
-    add_lazy_page ((struct special_page_elem*)file_page);
+    add_lazy_page (thread_current(), (struct special_page_elem*)file_page);
 
     /* Advance. */
     read_bytes -= page_read_bytes;
@@ -264,7 +264,7 @@ static void munmap (int mapping)
 	 || mapping >= STACK_BOTTOM)
     return;
 
-  struct file_page *file_page = (struct file_page*) find_lazy_page(mapping);
+  struct file_page *file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
   if (file_page == NULL)
     return;
 
@@ -288,7 +288,7 @@ static void munmap (int mapping)
   for(i = 0; i < num_of_pages; i++) {
     expire_page ((struct special_page_elem *) file_page);
     addr += PGSIZE;
-    file_page = (struct file_page*) find_lazy_page((int)addr);
+    file_page = (struct file_page*) find_lazy_page(thread_current (), (int)addr);
   }
   lock_acquire (&filesys_lock);
   file_close (file);

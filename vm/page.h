@@ -52,6 +52,7 @@ struct swap_page {
   //disk_sector_t sector; //sector where the disk starts
   bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
   enum special_page type_before; //page type before swaping
+  //struct exec_page *exec;
 };
 
 struct zero_page {
@@ -62,8 +63,8 @@ struct zero_page {
 
 void init_supplemental_pagetable (struct hash *);
 void destroy_supplemental_pagetable (struct hash *);
-struct special_page_elem * add_lazy_page (struct special_page_elem *page);
-struct special_page_elem * find_lazy_page (uint32_t ptr);
+struct special_page_elem * add_lazy_page (struct thread *t, struct special_page_elem *page);
+struct special_page_elem * find_lazy_page (struct thread *t, uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
 void expire_page (struct special_page_elem * gen_page);
 void print_supplemental_page_table (void);
