@@ -147,9 +147,11 @@ ft_replacement (void)
 	/* Choose one page with Access bit not set. */
 	while ((*pte & PTE_A) != 0)
 	{
-		//*pte &= ~(uint32_t) PTE_A;
 		pagedir_set_accessed (evict_t->pagedir, f->virtual_address, false);
 		
+        //*pte &= ~(uint32_t) PTE_A; 
+        //invalidate_pagedir (evict_t->pagedir);
+        
 		hand = list_remove(hand);
 		list_push_back(&frame_list, &f->ft_elem);
 		
@@ -172,10 +174,10 @@ ft_replacement (void)
   	switch(f->type){
   	  case (FILE):
         noop ();
-  	    struct file_page *file_page = (struct file_page*) find_lazy_page((uint32_t)f->virtual_address);
+  	    struct file_page *file_page = (struct file_page*) find_lazy_page(evict_t, (uint32_t)f->virtual_address);
     		ASSERT (file_page != NULL);
 
-    		file_write_at (file_page->source_file, file_page->virtual_page, file_page->zero_after, file_page->offset);
+    		file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
         break;
       default:
         noop ();
@@ -201,14 +203,25 @@ ft_replacement (void)
   	    swap_page->slot = ss;
   	    swap_page->dirty = *pte & PTE_D;
   	    swap_page->type_before = f->type;
-  	    add_lazy_page ((struct special_page_elem*)swap_page);
+ 	    
+  	    if (f->type == EXEC)
+  	    {
+  	      struct exec_page *exec_page = (struct exec_page*)find_lazy_page (evict_t, (uint32_t)f->virtual_address);
+  	      
+  	      //swap_page->exec = exec_page;
+  	      hash_delete (&evict_t->sup_pagetable, &exec_page->elem);
+  	      free(exec_page);
+  	    }
+  	    
+  	    add_lazy_page (evict_t, (struct special_page_elem*)swap_page);
   	}
 	}
 
 	/* Clear all the information for this frame. */
-	//*pte &= ~(uint32_t) PGMASK;
 	pagedir_clear_page(evict_t->pagedir, f->virtual_address);
-	
+    //*pte &= ~PTE_P;
+    //invalidate_pagedir (evict_t->pagedir);
+    
 	//f->tid = 0;
 	f->t = NULL;
 	f->type = 0;

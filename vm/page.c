@@ -28,17 +28,17 @@ init_supplemental_pagetable (struct hash *sup_pagetable) {
 }
 
 struct special_page_elem *
-add_lazy_page (struct special_page_elem *page) {
-  struct hash_elem *elem = hash_insert (&thread_current ()->sup_pagetable, &page->elem);
+add_lazy_page (struct thread *t, struct special_page_elem *page) {
+  struct hash_elem *elem = hash_insert (&t->sup_pagetable, &page->elem);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
 }
 
 struct special_page_elem *
-find_lazy_page (uint32_t ptr) {
+find_lazy_page (struct thread *t, uint32_t ptr) {
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
-  struct hash_elem *elem = hash_find (&thread_current ()->sup_pagetable, &needle.elem);
+  struct hash_elem *elem = hash_find (&t->sup_pagetable, &needle.elem);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
 }
@@ -126,7 +126,7 @@ validate_free_page (void *upage, uint32_t read_bytes)
 	struct special_page_elem *spe;
 	for(i = 0; i < num_of_pages; i++, ptr += PGSIZE)
 	{
-		spe = find_lazy_page(ptr);
+		spe = find_lazy_page(thread_current (), ptr);
 		if (spe != NULL)
 			return false; // This page has been already mapped.
 	}

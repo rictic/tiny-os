@@ -175,7 +175,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
   esp = f->cs == SEL_KCSEG ? cur->esp : f->esp;
-  gen_page = find_lazy_page (fault_page);
+  gen_page = find_lazy_page (cur, fault_page);
 
   bool stack_access = is_stack_access(fault_addr, esp);
   if (gen_page == NULL && !stack_access) {
@@ -250,6 +250,10 @@ page_fault (struct intr_frame *f)
       swap_slot_read (kpage, ss);
       frame->type = swap_page->type_before;
     
+	  if (swap_page->type_before == EXEC)
+		  frame->type = ZERO;
+		  //add_lazy_page (cur, (struct special_page_elem*)swap_page->exec);
+	    
       //delete swap_page in supplemental table.
       hash_delete (&cur->sup_pagetable, &swap_page->elem);
       free(swap_page);

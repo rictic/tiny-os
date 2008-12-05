@@ -536,7 +536,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     exec_page->offset = ofs;
     exec_page->zero_after = page_read_bytes;
     exec_page->writable = writable;
-    add_lazy_page ((struct special_page_elem*)exec_page);
+    add_lazy_page (thread_current(), (struct special_page_elem*)exec_page);
     
     /* Advance. */
     read_bytes -= page_read_bytes;
