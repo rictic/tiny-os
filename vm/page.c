@@ -34,6 +34,22 @@ add_lazy_page (struct special_page_elem *page) {
   return hash_entry(elem, struct special_page_elem, elem);
 }
 
+struct zero_page *
+new_zero_page (uint32_t virtual_page) {
+  struct zero_page *zp = malloc (sizeof (struct zero_page));
+  zp->type = ZERO; zp->virtual_page = virtual_page;
+  return zp;
+}
+
+struct exec_page *
+new_exec_page (uint32_t virtual_page, struct file *elf_file, 
+               size_t offset, size_t zero_after, bool writable) {
+  struct exec_page *ep = malloc (sizeof (struct exec_page));
+  ep->type = EXEC; ep->virtual_page = virtual_page; ep->elf_file = elf_file;
+  ep->offset = offset; ep->zero_after = zero_after; ep->writable = writable;
+  return ep;
+}
+
 struct special_page_elem *
 find_lazy_page (uint32_t ptr) {
   struct special_page_elem needle;
@@ -68,7 +84,7 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
     break;
   case ZERO:
     break;
-  case NORMAL:
+  case STACK:
     break;
   }
   printf("\n");
@@ -133,4 +149,3 @@ validate_free_page (void *upage, uint32_t read_bytes)
 	
 	return true;
 }
-

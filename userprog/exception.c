@@ -200,7 +200,7 @@ page_fault (struct intr_frame *f)
   bool writable = true;
   bool dirty = false;
   if (gen_page == NULL && stack_access) {
-    frame->type = NORMAL;
+    frame->type = STACK;
   }
   else {
     frame->type = gen_page->type;
@@ -222,6 +222,7 @@ page_fault (struct intr_frame *f)
       lock_release (&filesys_lock);
       memset ((uint8_t *)kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
       writable = exec_page->writable;
+//       expire_page (exec_page);
       break;
     case FILE:
       user = user;
@@ -259,8 +260,8 @@ page_fault (struct intr_frame *f)
       hash_delete (&cur->sup_pagetable, &gen_page->elem);
       free (gen_page);
       break;
-    case NORMAL:
-      printf("Error, can't retrieve a NORMAL page\n");
+    case STACK:
+      printf("Error, nothing to retrieve for a STACK page\n");
       exit(-1);
     }
   }
@@ -276,6 +277,6 @@ page_fault (struct intr_frame *f)
 	  pagedir_set_dirty (cur->pagedir, (void *)fault_page, true);
 	  //*frame->PTE |= PTE_D;
   
-  frame->virtual_address = fault_page;
+  frame->virtual_address = (uint32_t *) fault_page;
 }
 

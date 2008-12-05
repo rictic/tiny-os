@@ -8,9 +8,9 @@ enum special_page {
   FILE,
   SWAP,
   ZERO,
-  NORMAL
+  STACK
 };
-static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "NORMAL"};
+static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "STACK"};
 inline static const char * special_page_name(const enum special_page page_num) {
   return special_page_names[page_num];
 }
@@ -67,6 +67,8 @@ struct special_page_elem * find_lazy_page (uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
 void expire_page (struct special_page_elem * gen_page);
 void print_supplemental_page_table (void);
+struct zero_page *new_zero_page (uint32_t);
+struct exec_page *new_exec_page (uint32_t, struct file *, size_t, size_t, bool);
 
 static void noop (void);
 static inline void noop() {}
