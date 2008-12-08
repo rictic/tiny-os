@@ -8,7 +8,8 @@ enum special_page {
   FILE,
   SWAP,
   ZERO,
-  NORMAL
+  NORMAL,
+  SPECIAL
 };
 static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "NORMAL"};
 inline static const char * special_page_name(const enum special_page page_num) {
@@ -49,10 +50,8 @@ struct swap_page {
   struct hash_elem elem;
   uint32_t virtual_page;
   struct swap_slot *slot;
-  //disk_sector_t sector; //sector where the disk starts
   bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
   enum special_page type_before; //page type before swaping
-  //struct exec_page *exec;
 };
 
 struct zero_page {

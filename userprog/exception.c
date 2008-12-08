@@ -244,15 +244,13 @@ page_fault (struct intr_frame *f)
       user = user; // stupid c parser
       struct swap_page *swap_page = (struct swap_page*) gen_page;
       struct swap_slot *ss;
-      //slot.tid = thread_current ()->tid;
       ss = swap_page->slot;
       dirty = swap_page->dirty;
       swap_slot_read (kpage, ss);
       frame->type = swap_page->type_before;
     
 	  if (swap_page->type_before == EXEC)
-		  frame->type = ZERO;
-		  //add_lazy_page (cur, (struct special_page_elem*)swap_page->exec);
+		  frame->type = SPECIAL;
 	    
       //delete swap_page in supplemental table.
       hash_delete (&cur->sup_pagetable, &swap_page->elem);
@@ -278,7 +276,6 @@ page_fault (struct intr_frame *f)
   /* Set dirty bit if this frame is dirty before swaping to the swap disk. */
   if (dirty)
 	  pagedir_set_dirty (cur->pagedir, (void *)fault_page, true);
-	  //*frame->PTE |= PTE_D;
   
   frame->virtual_address = fault_page;
 }

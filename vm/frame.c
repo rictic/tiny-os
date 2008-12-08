@@ -118,7 +118,6 @@ ft_replacement (void)
 {
 	struct thread *cur = thread_current();
 	struct thread *evict_t;
-	//struct bool thread_status_modified = false;
 	
 	lock_acquire (&frame_lock);
 
@@ -129,14 +128,6 @@ ft_replacement (void)
 	struct frame *f = list_entry(hand, struct frame, ft_elem);
 	
 	evict_t = f->t;
-	/*if (evict_t != cur && evict_t->status == THREAD_READY)
-	{
-		old_level = intr_disable ();
-		list_remove(evict_t->elem);
-		thread_current ()->status = THREAD_BLOCKED;
-		thread_status_modified = true;
-		intr_set_level (old_level);
-	}*/
 
 	uint32_t *pte = f->PTE;
 	
@@ -148,28 +139,19 @@ ft_replacement (void)
 	while ((*pte & PTE_A) != 0)
 	{
 		pagedir_set_accessed (evict_t->pagedir, f->virtual_address, false);
-		
-        //*pte &= ~(uint32_t) PTE_A; 
-        //invalidate_pagedir (evict_t->pagedir);
         
 		hand = list_remove(hand);
 		list_push_back(&frame_list, &f->ft_elem);
 		
 		check_and_set_hand();
 		
-		//if (evict_t != cur)
-			//sema_up (&evict_t->page_sema);
-		
 		f = list_entry(hand, struct frame, ft_elem);
 		
 		evict_t = f->t;
-		/*if (evict_t != cur)
-			sema_down (&evict_t->page_sema);*/
 		
 		pte = f->PTE;
 	}
 	
-	//if ((*pte & PTE_D) != 0) {
 	if ((*pte & PTE_D) != 0) {
   	switch(f->type){
   	  case (FILE):
@@ -190,9 +172,6 @@ ft_replacement (void)
   	    if (ss == NULL)
   	    {
   	    	intr_set_level (old_level);
-  	   
-  	    	/*if (evict_t != cur)
-  				sema_up (&evict_t->page_sema);*/
   	    	
   	    	lock_release (&frame_lock);
   	    	return NULL;
@@ -208,7 +187,6 @@ ft_replacement (void)
   	    {
   	      struct exec_page *exec_page = (struct exec_page*)find_lazy_page (evict_t, (uint32_t)f->virtual_address);
   	      
-  	      //swap_page->exec = exec_page;
   	      hash_delete (&evict_t->sup_pagetable, &exec_page->elem);
   	      free(exec_page);
   	    }
@@ -219,17 +197,11 @@ ft_replacement (void)
 
 	/* Clear all the information for this frame. */
 	pagedir_clear_page(evict_t->pagedir, f->virtual_address);
-    //*pte &= ~PTE_P;
-    //invalidate_pagedir (evict_t->pagedir);
     
-	//f->tid = 0;
 	f->t = NULL;
 	f->type = 0;
 	f->PTE = NULL;
 	f->virtual_address = NULL;
-	
-	//if (evict_t != cur)
-		//sema_up (&evict_t->page_sema);
 	
 	intr_set_level (old_level);
 	

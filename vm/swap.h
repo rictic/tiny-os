@@ -12,7 +12,6 @@
 /* frame structure for frame table. */
 struct swap_slot
 {
-    //tid_t tid;                          /* Thread identifier. */
     disk_sector_t start;                /* First data sector of the swap slot. */
 };
 

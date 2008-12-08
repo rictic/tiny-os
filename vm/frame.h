@@ -9,7 +9,6 @@
 /* frame structure for frame table. */
 struct frame
 {
-    //tid_t tid;                          /* Thread identifier. */
     struct thread *t;					/* The thread the frame belongs to. */
     enum special_page type;				/* Identify the type of this page. */
 	uint32_t *user_page;				/* the pointer to the used user frame. */
