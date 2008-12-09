@@ -214,7 +214,7 @@ thread_create (const char *name, int priority,
   tid_t tid = t->tid;
   /* Add to run queue. */
   thread_unblock (t);
-  init_supplemental_pagetable (&t->sup_pagetable);
+  init_supplemental_pagetable (t);
 
   return tid;
 }
@@ -239,7 +239,7 @@ thread_create_child (const char *name, struct file *file, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  init_supplemental_pagetable (&t->sup_pagetable);
+  init_supplemental_pagetable (t);
 
   sema_down (&cur->child_sema);
   
@@ -361,7 +361,7 @@ thread_exit (void)
     lock_release (&t->parent->children_lock);
   }
 
-  destroy_supplemental_pagetable (&t->sup_pagetable);
+  destroy_supplemental_pagetable (t);
 
 #ifdef USERPROG
   process_exit ();

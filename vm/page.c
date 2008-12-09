@@ -23,13 +23,16 @@ page_key_less (const struct hash_elem *a, const struct hash_elem *b, void *aux U
 }
 
 void
-init_supplemental_pagetable (struct hash *sup_pagetable) {
-  hash_init (sup_pagetable, page_hash, page_key_less, NULL);
+init_supplemental_pagetable (struct thread *t) {
+  hash_init (&t->sup_pagetable, page_hash, page_key_less, NULL);
+  sema_init (&t->page_sema, 1);
 }
 
 struct special_page_elem *
 add_lazy_page (struct thread *t, struct special_page_elem *page) {
+  sema_down (&t->page_sema);
   struct hash_elem *elem = hash_insert (&t->sup_pagetable, &page->elem);
+  sema_up (&t->page_sema);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
 }
@@ -54,7 +57,9 @@ struct special_page_elem *
 find_lazy_page (struct thread *t, uint32_t ptr) {
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
+  sema_down (&t->page_sema);
   struct hash_elem *elem = hash_find (&t->sup_pagetable, &needle.elem);
+  sema_up (&t->page_sema);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
 }
@@ -125,8 +130,10 @@ static void expire_page_hf (struct hash_elem *element, void *aux UNUSED) {
 }
 
 void
-destroy_supplemental_pagetable (struct hash *sup_pagetable) {
-  hash_destroy (sup_pagetable, expire_page_hf);
+destroy_supplemental_pagetable (struct thread *t) {
+  sema_down (&t->page_sema);
+  hash_destroy (&t->sup_pagetable, expire_page_hf);
+  sema_up (&t->page_sema);
 }
 
 bool

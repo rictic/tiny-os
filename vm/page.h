@@ -61,8 +61,8 @@ struct zero_page {
   uint32_t virtual_page;
 };
 
-void init_supplemental_pagetable (struct hash *);
-void destroy_supplemental_pagetable (struct hash *);
+void init_supplemental_pagetable (struct thread *t);
+void destroy_supplemental_pagetable (struct thread *t);
 struct special_page_elem * add_lazy_page (struct thread *t, struct special_page_elem *page);
 struct special_page_elem * find_lazy_page (struct thread *t, uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
