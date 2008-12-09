@@ -251,8 +251,8 @@ page_fault (struct intr_frame *f)
       swap_slot_read (kpage, ss);
       frame->type = swap_page->type_before;
     
-	  if (swap_page->type_before == EXEC)
-		  frame->type = ZERO;
+      if (swap_page->type_before == EXEC)
+        frame->type = ZERO;
 		  //add_lazy_page (cur, (struct special_page_elem*)swap_page->exec);
 	    
       //delete swap_page in supplemental table.
