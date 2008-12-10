@@ -125,6 +125,13 @@ ft_destroy (struct thread *t)
   lock_release (&frame_lock);
 }
 
+static bool
+is_frame(struct frame *f) {
+  return (f->loaded == true || f->loaded == false)
+         && (((int)f->virtual_address & 0xfffff000) != 0xccccc000)
+         && (((int)f->PTE & 0xfffff000) != 0xccccc000);
+}
+
 static struct frame *
 get_frame_for_replacement(void) {
   check_and_set_hand();
@@ -158,14 +165,17 @@ ft_replacement (void)
   //lock_acquire (&frame_lock);
   enum intr_level old_level = intr_disable ();
   struct frame *f = get_frame_for_replacement ();
+  ASSERT(is_frame(f));
   void * kpage = f->user_page;
   bool dirty = (*f->PTE) & PTE_D;
   void * user_page = f->virtual_address;
   struct thread *evict_t = f->t;
+  ASSERT(is_frame(f));
   struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
+
+  sema_down(&f->t->page_sema);
   pagedir_clear_page(f->t->pagedir, f->virtual_address);
   
-  sema_down(&evict_t->page_sema);
   intr_set_level (old_level);
     
   if (dirty) {
@@ -175,13 +185,7 @@ ft_replacement (void)
     }
     else {
       struct swap_slot *ss = swap_slot_write(kpage);
-      //ASSERT(ss != NULL && !!"unable to obtain a swap slot");
-      if (ss == NULL)
-      {	  
-    	  sema_up (&evict_t->page_sema);
-    	  lock_release (&frame_lock);
-    	  return NULL;
-      }
+      ASSERT(ss != NULL && !!"unable to obtain a swap slot");
       
       if (evicted_page != NULL)
         hash_delete(&evict_t->sup_pagetable, &evicted_page->elem);
@@ -204,11 +208,6 @@ ft_replacement (void)
 //   lock_acquire (&frame_lock);
   hand = list_next(hand);
   check_and_set_hand();
-
-  /*f->t = NULL;
-  f->PTE = NULL;
-  f->virtual_address = NULL;
-  f->loaded = false;*/
 
   //lock_release (&frame_lock);
 

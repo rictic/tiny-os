@@ -72,7 +72,7 @@ new_swap_page (uint32_t virtual_page, struct swap_slot *slot,
   return sp;
 }
 
-static inline struct special_page_elem *find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
+static struct special_page_elem *find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
   ASSERT((ptr & 0xfffff000) != 0xccccc000);
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
