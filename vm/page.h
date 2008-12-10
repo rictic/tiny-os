@@ -7,13 +7,7 @@ enum special_page {
   EXEC,
   FILE,
   SWAP,
-<<<<<<< HEAD:vm/page.h
-  ZERO,
-  NORMAL,
-  SPECIAL
-=======
   ZERO
->>>>>>> riku:vm/page.h
 };
 static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "STACK"};
 inline static const char * special_page_name(const enum special_page page_num) {
