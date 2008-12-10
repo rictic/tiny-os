@@ -13,7 +13,7 @@
 /* A frame structure pointer, named hand, for pointing a frame to evict. */
 static struct list_elem *hand;
 
-static struct frame *ft_replacement (void);
+static void *ft_replacement (void);
 static inline void check_and_set_hand (void);
 
 /* Initialize the frame table. */
@@ -35,28 +35,27 @@ ft_get_page (enum palloc_flags flags)
   void *page = palloc_get_page (flags);
   struct frame *f = NULL;
   
-  if (page != NULL)
+  if (page == NULL)
   {
-    f = malloc (sizeof (struct frame));
-    f->t = thread_current();
-    //f->tid = thread_current()->tid;
-    f->user_page = page;
-    f->loaded = false;
-    
-    lock_acquire (&frame_lock);
-    list_push_back(&frame_list, &f->ft_elem);
-    lock_release (&frame_lock);
-  }
-  else
-  {
-    f = ft_replacement();
+    page = ft_replacement();
 
-    if (f == NULL)
+    if (page == NULL)
       return NULL;
 
-    f->t = thread_current();
+    //f->t = thread_current();
     //f->tid = thread_current()->tid;
   }
+  
+  f = malloc (sizeof (struct frame));
+  f->t = thread_current();
+  //f->tid = thread_current()->tid;
+  f->user_page = page;
+  f->loaded = false;
+  //*f->PTE &= ~(uint32_t) PTE_A; 
+  
+  lock_acquire (&frame_lock);
+  list_push_back(&frame_list, &f->ft_elem);
+  lock_release (&frame_lock);
   
   return f;
 }
@@ -78,6 +77,11 @@ ft_free_page (void *page)
 
     if (f->user_page == page && f->t == thread_current())
     {
+      if (hand == &f->ft_elem)
+      {
+    	  hand = list_next(hand);
+    	  check_and_set_hand();
+      }	  
       list_remove(elem);
       free(f);
       break;
@@ -104,6 +108,11 @@ ft_destroy (struct thread *t)
     
     if (f->t == t)
     {
+      if (hand == &f->ft_elem)
+      {
+    	  hand = list_next(hand);
+    	  check_and_set_hand();
+      }	  
       list_remove(elem);
       elem = list_next(elem);
       free(f);
@@ -126,6 +135,7 @@ get_frame_for_replacement(void) {
   {
 	if (f->loaded != false)
 	{	
+		//*f->PTE &= ~(uint32_t) PTE_A;
 		pagedir_set_accessed (f->t->pagedir, f->virtual_address, false);
 		//hand = list_remove(hand);
 		//list_push_back(&frame_list, &f->ft_elem);
@@ -140,18 +150,18 @@ get_frame_for_replacement(void) {
   return f;
 }
 
-static struct frame *
+static void *
 ft_replacement (void)
 {
   ASSERT (!list_empty(&frame_list));
   lock_acquire (&frame_lock);
   enum intr_level old_level = intr_disable ();
   struct frame *f = get_frame_for_replacement ();
-  struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
-  bool dirty = (*f->PTE) & PTE_D;
   void * kpage = f->user_page;
+  bool dirty = (*f->PTE) & PTE_D;
   void * user_page = f->virtual_address;
   struct thread *evict_t = f->t;
+  struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
   pagedir_clear_page(f->t->pagedir, f->virtual_address);
   
   sema_down(&evict_t->page_sema);
@@ -178,6 +188,15 @@ ft_replacement (void)
                      new_swap_page (user_page, ss, dirty, evicted_page));
     }
   }
+
+  if (hand == &f->ft_elem)
+  {
+	  hand = list_next(hand);
+	  check_and_set_hand();
+  }	  
+
+  list_remove(&f->ft_elem);
+  free(f);
   
   sema_up (&evict_t->page_sema);
   
@@ -185,14 +204,14 @@ ft_replacement (void)
   hand = list_next(hand);
   check_and_set_hand();
 
-  f->t = NULL;
+  /*f->t = NULL;
   f->PTE = NULL;
   f->virtual_address = NULL;
-  f->loaded = false;
+  f->loaded = false;*/
 
   lock_release (&frame_lock);
 
-  return f;
+  return kpage;
 }
 
 static inline void 
