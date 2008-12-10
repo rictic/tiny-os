@@ -283,10 +283,13 @@ static void munmap (unsigned mapping)
   
   unsigned i;
   for(i = 0; i < num_of_pages; i++) {
+    sema_down(&thread_current()->page_sema);
     expire_page ((struct special_page_elem *) file_page);
+    sema_up(&thread_current()->page_sema);
     mapping += PGSIZE;
     file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
   }
+
   lock_acquire (&filesys_lock);
   file_close (file);
   lock_release (&filesys_lock);

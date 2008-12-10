@@ -166,7 +166,6 @@ expire_page (struct special_page_elem * gen_page) {
     default:
       break;
     }
-//     ft_free_page(kpage);
   }
   hash_delete (&cur->sup_pagetable, &gen_page->elem);
   free(gen_page);
