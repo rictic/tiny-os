@@ -122,9 +122,6 @@ static const char *(strs[]) = {"false", "true"};
 static inline const char* b(bool val) {return strs[val];}
 static inline bool
 is_stack_access (void * address, void * esp) {
-//   printf("%s, %s, %s\n", b(address <= PHYS_BASE),
-//     b(address > STACK_BOTTOM), b(address + 32 >= esp));
-//   printf("%08x + 32 >= %08x\n", address, esp);
   return (address < PHYS_BASE) 
       && (address > STACK_BOTTOM) 
       && (address + 32 >= esp);
@@ -180,6 +177,8 @@ page_fault (struct intr_frame *f)
   if (gen_page == NULL && !stack_access) {
     switch (f->cs) {
     case SEL_KCSEG:
+      if (!cur->in_syscall)
+        printf("kernel page fault at 0x%08x\n", fault_addr);
       ASSERT(cur->in_syscall && !!"page fault in kernel");
       f->eip = (void *)f->eax;
       f->eax = -1;
@@ -201,6 +200,7 @@ page_fault (struct intr_frame *f)
   bool dirty = false;
   if (gen_page != NULL) {
     switch (gen_page->type) {
+    case FILE: //same as EXEC
     case EXEC:
       noop(); //why is this line needed?  Crazy C syntax
       struct exec_page *exec_page = (struct exec_page*) gen_page;
@@ -217,24 +217,8 @@ page_fault (struct intr_frame *f)
       }
       lock_release (&filesys_lock);
       memset ((uint8_t *)kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
-      writable = exec_page->writable;
-      break;
-    case FILE:
-      noop();
-      struct file_page *file_page = (struct file_page*) gen_page;
-      lock_acquire (&filesys_lock);
-      file_seek (file_page->source_file, file_page->offset);
-      if (file_read (file_page->source_file, kpage, file_page->zero_after)
-          != (int) file_page->zero_after) {
-        ft_free_page (kpage);
-        printf ("Unable to read in mmaped file in page fault handler\n");
-        lock_release (&filesys_lock);
-        exit (-1);  
-      }
-      lock_release (&filesys_lock);
-      //if we really need to zero after, then we should just use one handler
-      // for both exec files and mmaped files
-      memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
+      if (exec_page->type == EXEC)
+        writable = exec_page->writable;
       break;
     case SWAP:
       noop();
