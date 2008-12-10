@@ -30,21 +30,76 @@ Peter Burns <rictic@gmail.com>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+enum special_page {
+  EXEC,
+  FILE,
+  SWAP,
+  ZERO
+};
+  
+//this just defines the head of the struct which all special
+// page elements must begin with
+struct special_page_elem {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+};
 
-TODO RIKU
+
+struct exec_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct file *elf_file;
+  size_t offset; //number of bytes into the file to start
+  size_t zero_after; //after this offset, the rest should be zeros
+  bool writable;
+};
+
+struct file_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct file *source_file;
+  size_t offset; //number of pages into the file
+  size_t zero_after; //after this offset, the rest should be zeros
+};
+
+struct swap_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct swap_slot *slot;
+  bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
+  struct special_page_elem *evicted_page; //the evicted page before swaping
+};
+
+struct zero_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+};
 
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
 
-TODO RIKU
+We have frame structure in frame.h which is for storing the allocated 
+frame, then adding to the frame list for the frame table.
+We have user virtual memory address, the thread which contains that 
+frame, and other useful information in the frame structure. So with the 
+given user virtual memory address of a given page, we could walk through
+the frame list and locate that frame with the same user virtual memory 
+address.
 
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
 
-TODO RIKU
+I only access memory by using either the PTE or user virtual memory address 
+on the frame structure, avoid accessing it from the kernel virtual memory 
+in user pool.
 
 ---- SYNCHRONIZATION ----
 
@@ -103,7 +158,20 @@ TODO PETER--------------
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
-TODO RIKU
+I should point out that we have a hand pointer pointing to a frame in 
+frame table. Besides, we are applying the "second chance" algorithm 
+for the replacement.
+
+First of all, if page cannot be allocated by palloc_get_page(), we will 
+jump to the replacement function.
+Secondly, we use the hand pointer to find a frame with Access bit set 
+to 0. If the hand with Access bit being set, we will clear the bit and 
+push it back to the frame list. The hand then points to the next one 
+circularly.
+After choosing a frame to evict, we first mark it as not present. Then, 
+we will write the data back to file if that frame is storing a file data, 
+or we swap it to the swap disk if the data in that page is dirty. 
+Otherwise, we just discard that frame without any action.
 
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
