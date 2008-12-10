@@ -8,10 +8,7 @@
 #include "userprog/pagedir.h"
 
 /* List of used frame. */
-static struct list frame_list;
-
-/* Lock for the frame table. */
-static struct lock frame_lock;
+//static struct list frame_list;
 
 /* A frame structure pointer, named hand, for pointing a frame to evict. */
 static struct list_elem *hand;
@@ -44,7 +41,8 @@ ft_get_page (enum palloc_flags flags)
     f->t = thread_current();
     //f->tid = thread_current()->tid;
     f->user_page = page;
-  
+    f->loaded = false;
+    
     lock_acquire (&frame_lock);
     list_push_back(&frame_list, &f->ft_elem);
     lock_release (&frame_lock);
@@ -72,11 +70,13 @@ ft_free_page (void *page)
   
   lock_acquire (&frame_lock);
 
+  //printf("ft_free_page!\n");
+
   lforeach(elem, &frame_list)
   {
     f = list_entry(elem, struct frame, ft_elem);
 
-    if (f->user_page == page)
+    if (f->user_page == page && f->t == thread_current())
     {
       list_remove(elem);
       free(f);
@@ -97,6 +97,7 @@ ft_destroy (struct thread *t)
 
   struct list_elem *elem = list_begin(&frame_list);
 
+  //printf("ft_destroy!\n");
   while(elem != list_end(&frame_list)) 
   {
     struct frame *f = list_entry(elem, struct frame, ft_elem);
@@ -121,14 +122,19 @@ get_frame_for_replacement(void) {
   
   /* Second Chance replacement algorithm. */
   /* Choose the next page with Access bit not set. */
-  while ((*f->PTE & PTE_A) != 0)
+  while ((f->loaded == true && (*f->PTE & PTE_A) != 0) || f->loaded == false)
   {
-    pagedir_set_accessed (f->t->pagedir, f->virtual_address, false);
-    hand = list_remove(hand);
-    list_push_back(&frame_list, &f->ft_elem);
+	if (f->loaded != false)
+	{	
+		pagedir_set_accessed (f->t->pagedir, f->virtual_address, false);
+		//hand = list_remove(hand);
+		//list_push_back(&frame_list, &f->ft_elem);
+	}
+	
+	hand = list_next(hand);
     
     check_and_set_hand();
-    printf("%08x\n", hand);
+    //printf("%08x\n", hand);
     f = list_entry(hand, struct frame, ft_elem);
   }
   return f;
@@ -158,8 +164,14 @@ ft_replacement (void)
     }
     else {
       struct swap_slot *ss = swap_slot_write(kpage);
-      ASSERT(ss != NULL && !!"unable to obtain a swap slot");
-
+      //ASSERT(ss != NULL && !!"unable to obtain a swap slot");
+      if (ss == NULL)
+      {	  
+    	  sema_up (&evict_t->page_sema);
+    	  lock_release (&frame_lock);
+    	  return NULL;
+      }
+      
       if (evicted_page != NULL)
         hash_delete(&evict_t->sup_pagetable, &evicted_page->elem);
       add_lazy_page_unsafe (evict_t, (struct special_page_elem*)
@@ -167,22 +179,19 @@ ft_replacement (void)
     }
   }
   
-<<<<<<< HEAD:vm/frame.c
-  //sema_up (&f->t->page_sema);
-  if (&f->t->status == THREAD_BLOCKED || &f->t->status == THREAD_READY)
-	    list_push_back (&ready_list, &f->t->elem);
-=======
   sema_up (&evict_t->page_sema);
->>>>>>> peter/master:vm/frame.c
   
 //   lock_acquire (&frame_lock);
   hand = list_next(hand);
   check_and_set_hand();
-  lock_release (&frame_lock);
 
   f->t = NULL;
   f->PTE = NULL;
   f->virtual_address = NULL;
+  f->loaded = false;
+
+  lock_release (&frame_lock);
+
   return f;
 }
 

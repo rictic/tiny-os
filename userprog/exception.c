@@ -178,6 +178,25 @@ page_fault (struct intr_frame *f)
 
   bool stack_access = is_stack_access(fault_addr, esp);
   if (gen_page == NULL && !stack_access) {
+	printf("fail here...%08x\n", fault_addr);
+  
+	  struct list_elem *elem_test;
+	  struct frame *f_test;
+	  
+	  //lock_acquire (&frame_lock);
+
+	  lforeach(elem_test, &frame_list)
+	  {
+		  f_test = list_entry(elem_test, struct frame, ft_elem);
+		  printf("thread id is %d\n", f_test->t->tid);
+		  printf("user_page is 0x%08x\n", f_test->user_page);
+		  printf("PTE is 0x%08x\n", f_test->PTE);
+		  printf("virtual_address is 0x%08x\n", f_test->virtual_address);
+		  printf("loaded is %s\n", f_test->loaded ? "true" : "false");		  
+	  }
+	  
+	  //lock_release (&frame_lock);
+	  
     switch (f->cs) {
     case SEL_KCSEG:
       ASSERT(cur->in_syscall && !!"page fault in kernel");
@@ -255,8 +274,12 @@ page_fault (struct intr_frame *f)
     }
   }
 
+  lock_acquire (&frame_lock);
+
   /* Add the page to the process's address space. */
   if (!install_page ((void *)fault_page, frame, writable)) {
+	lock_release (&frame_lock);
+  
     ft_free_page (kpage);
     exit (-1);
   }
@@ -266,5 +289,9 @@ page_fault (struct intr_frame *f)
 	  pagedir_set_dirty (cur->pagedir, (void *)fault_page, true);
   
   frame->virtual_address = (uint32_t *) fault_page;
+  frame->loaded = true;
+
+  lock_release (&frame_lock);
+
 }
 

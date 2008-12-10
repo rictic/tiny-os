@@ -556,12 +556,16 @@ setup_stack (void **esp)
   if (frame == NULL)
     return false;
   uint8_t *stack_begin = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  lock_acquire (&frame_lock);
   if (!install_page (stack_begin, frame, true)){
+	  lock_release (&frame_lock);
 	  ft_free_page (frame->user_page);
     return false;
   }
   *esp = PHYS_BASE;
-  frame->virtual_address = (uint32_t *)stack_begin;  
+  frame->virtual_address = (uint32_t *)stack_begin;
+  frame->loaded = true;
+  lock_release (&frame_lock);
 
   return true;
 }
