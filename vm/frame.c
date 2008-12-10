@@ -116,7 +116,6 @@ ft_destroy (struct thread *t)
 
 static struct frame *
 get_frame_for_replacement(void) {
-  lock_acquire (&frame_lock);
   check_and_set_hand();
   struct frame *f = list_entry(hand, struct frame, ft_elem);
   
@@ -129,9 +128,9 @@ get_frame_for_replacement(void) {
     list_push_back(&frame_list, &f->ft_elem);
     
     check_and_set_hand();
+    printf("%08x\n", hand);
     f = list_entry(hand, struct frame, ft_elem);
   }
-  lock_release (&frame_lock);
   return f;
 }
 
@@ -139,35 +138,40 @@ static struct frame *
 ft_replacement (void)
 {
   ASSERT (!list_empty(&frame_list));
-  struct frame *f = get_frame_for_replacement ();
+  lock_acquire (&frame_lock);
   enum intr_level old_level = intr_disable ();
+  struct frame *f = get_frame_for_replacement ();
   struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
+  bool dirty = (*f->PTE) & PTE_D;
+  void * kpage = f->user_page;
+  void * user_page = f->virtual_address;
+  struct thread *evict_t = f->t;
   pagedir_clear_page(f->t->pagedir, f->virtual_address);
-
-  sema_down(&f->t->page_sema);
+  
+  sema_down(&evict_t->page_sema);
   intr_set_level (old_level);
     
-  bool dirty = (*f->PTE) & PTE_D;
+
 
   if (dirty) {
     if (evicted_page != NULL && evicted_page->type == FILE){
       struct file_page *file_page = (struct file_page*) evicted_page;
-      file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);      
+      file_write_at (file_page->source_file, kpage, file_page->zero_after, file_page->offset);      
     }
     else {
-      struct swap_slot *ss = swap_slot_write(f->user_page);
+      struct swap_slot *ss = swap_slot_write(kpage);
       ASSERT(ss != NULL && !!"unable to obtain a swap slot");
 
       if (evicted_page != NULL)
-        hash_delete(&f->t->sup_pagetable, &evicted_page->elem);
-      add_lazy_page_unsafe (f->t, (struct special_page_elem*)
-                     new_swap_page (f->virtual_address, ss, dirty, evicted_page));
+        hash_delete(&evict_t->sup_pagetable, &evicted_page->elem);
+      add_lazy_page_unsafe (evict_t, (struct special_page_elem*)
+                     new_swap_page (user_page, ss, dirty, evicted_page));
     }
   }
   
-  sema_up (&f->t->page_sema);
+  sema_up (&evict_t->page_sema);
   
-  lock_acquire (&frame_lock);
+//   lock_acquire (&frame_lock);
   hand = list_next(hand);
   check_and_set_hand();
   lock_release (&frame_lock);
