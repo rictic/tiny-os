@@ -258,18 +258,19 @@ static int mmap (int fd, void *addr)
 }
 
 /* Unmaps the mapping designated by int mapping. */
-static void munmap (int mapping)
+static void munmap (unsigned mapping)
 {
-  if ((mapping & 0x00000fff) != 0
-	 || mapping >= (int)STACK_BOTTOM)
-    return;
+  if ((mapping & 0x00000fff) != 0)
+	  return;
 
   struct file_page *file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
-  if (file_page == NULL)
+  if (file_page == NULL || file_page->type != FILE)
     return;
   
+  struct file * file = file_page->source_file;
+  
   lock_acquire (&filesys_lock);
-  uint32_t read_bytes = file_length(file_page->source_file);
+  uint32_t read_bytes = file_length(file);
   lock_release (&filesys_lock);
   
   if (read_bytes == 0)
@@ -287,7 +288,7 @@ static void munmap (int mapping)
     file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
   }
   lock_acquire (&filesys_lock);
-  file_close (file_page->source_file);
+  file_close (file);
   lock_release (&filesys_lock);
 }
 
@@ -305,9 +306,12 @@ syscall_handler (struct intr_frame *f)
 {
   int *args = f->esp; args++;
   int return_val = f->eax;
-  
+  struct thread *cur = thread_current ();
+
+  cur->in_syscall = true;
   validate_read (f->esp, 1);
-  thread_current ()->esp = f->esp;
+
+  cur->esp = f->esp;
   int sys_call = *((int *)f->esp);
 
   switch (sys_call){
@@ -331,9 +335,9 @@ syscall_handler (struct intr_frame *f)
 
     default: exit(-1);
   }
-  
+  cur->in_syscall = false;
+    
   //"return" the value back as though this were a function call
-
   f->eax=return_val;
 }
 

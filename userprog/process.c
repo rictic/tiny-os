@@ -553,7 +553,6 @@ static bool
 setup_stack (void **esp) 
 {
   struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO); 
-  frame->type = STACK;
   if (frame == NULL)
     return false;
   uint8_t *stack_begin = ((uint8_t *) PHYS_BASE) - PGSIZE;

@@ -7,8 +7,7 @@ enum special_page {
   EXEC,
   FILE,
   SWAP,
-  ZERO,
-  STACK
+  ZERO
 };
 static const char *(special_page_names[]) = {"EXEC", "FILE", "SWAP", "ZERO", "STACK"};
 inline static const char * special_page_name(const enum special_page page_num) {

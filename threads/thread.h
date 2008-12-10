@@ -121,6 +121,8 @@ struct thread
 
     struct file *(files[NUM_FD]);       /* File descriptor table */
     
+    bool in_syscall;                    /* Used to have different page_fault behavior
+                                           during a syscall and without it */
 
     
     /* Owned by thread.c. */

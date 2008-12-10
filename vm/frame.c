@@ -139,40 +139,32 @@ static struct frame *
 ft_replacement (void)
 {
   ASSERT (!list_empty(&frame_list));
-  
   struct frame *f = get_frame_for_replacement ();
-  
   enum intr_level old_level = intr_disable ();
   struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
-  /* Clear all the information for this frame. */
   pagedir_clear_page(f->t->pagedir, f->virtual_address);
-
 
   sema_down(&f->t->page_sema);
   intr_set_level (old_level);
     
   bool dirty = (*f->PTE) & PTE_D;
+
   if (dirty) {
-    switch(f->type){
-      case (FILE):
-        noop ();
-        struct file_page *file_page = (struct file_page*) evicted_page;
-        ASSERT (file_page != NULL);
+    if (evicted_page != NULL && evicted_page->type == FILE){
+      struct file_page *file_page = (struct file_page*) evicted_page;
+      file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);      
+    }
+    else {
+      struct swap_slot *ss = swap_slot_write(f->user_page);
+      ASSERT(ss != NULL && !!"unable to obtain a swap slot");
 
-        file_write_at (file_page->source_file, f->user_page, file_page->zero_after, file_page->offset);
-        break;
-      default:
-        noop ();
-        struct swap_slot *ss = swap_slot_write(f->user_page);
-        if (ss == NULL) {
-          sema_up(&f->t->page_sema);
-          return NULL;
-        }
-
-        add_lazy_page_unsafe (f->t, (struct special_page_elem*)
-                       new_swap_page (f->virtual_address, ss, dirty, evicted_page));
+      if (evicted_page != NULL)
+        hash_delete(&f->t->sup_pagetable, &evicted_page->elem);
+      add_lazy_page_unsafe (f->t, (struct special_page_elem*)
+                     new_swap_page (f->virtual_address, ss, dirty, evicted_page));
     }
   }
+  
   sema_up (&f->t->page_sema);
   
   lock_acquire (&frame_lock);
@@ -181,7 +173,6 @@ ft_replacement (void)
   lock_release (&frame_lock);
 
   f->t = NULL;
-  f->type = 0;
   f->PTE = NULL;
   f->virtual_address = NULL;
   return f;

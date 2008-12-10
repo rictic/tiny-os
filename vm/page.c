@@ -90,9 +90,41 @@ static inline void print_file(struct file *file) {
   printf ("file at sector ");
   print_inode_location (file->inode);
 }
+
 static void
-print_page_entry (struct hash_elem *e, void *aux UNUSED) {
-  struct special_page_elem *gen_page = hash_entry(e, struct special_page_elem, elem);
+print_page_entry_hf (struct hash_elem *e, void *aux UNUSED) {
+  print_page_entry(hash_entry(e, struct special_page_elem, elem));
+}
+
+void
+print_page (unsigned char * ptr) {
+  unsigned i, j, k;
+  for (k = 0; k < (PGSIZE / 16); k++) {
+    printf("%08x  ", ptr);
+    for(j=0; j<2;j++){
+        for(i=8*j; (i<8+8*j) && (i<16); i++)
+            printf("%02x ",ptr[i]);
+        printf(" ");
+    }
+    printf("|");
+    for(i=0; i<16; i++){
+        if (ptr[i] >= 32 && ptr[i] <= 126)
+            printf("%c",ptr[i]);
+        else
+            printf(".");
+    }
+    printf("|");
+    printf("\n");
+    ptr += 16;
+  }
+}
+
+void
+print_page_entry (struct special_page_elem *gen_page) {
+  if (gen_page == NULL){
+    printf("(NULL)\n");
+    return;
+  }
   printf("%s page mapped to 0x%08x", special_page_name(gen_page->type), gen_page->virtual_page);
   switch (gen_page->type) {
   case EXEC:
@@ -100,18 +132,11 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
     struct exec_page *exec_page = (struct exec_page*) gen_page;
     printf(" from ");
     print_file(exec_page->elf_file);
-    printf(" starting at offset %u, but zeroing after %u", (unsigned)exec_page->offset, (unsigned)exec_page->zero_after);
-  case FILE:
-    noop();
-//     struct file_page *file_page = (struct file_page*) gen_page;
+    printf(" starting at offset %u", (unsigned)exec_page->offset);
+    if (exec_page->zero_after != 4096)
+      printf(", but zeroing after %u", (unsigned)exec_page->zero_after);
     break;
-  case SWAP:
-    noop();
-//     struct swap_page *swap_page = (struct swap_page*) gen_page;
-    break;
-  case ZERO:
-    break;
-  case STACK:
+  default:
     break;
   }
   printf("\n");
@@ -119,7 +144,7 @@ print_page_entry (struct hash_elem *e, void *aux UNUSED) {
 
 void
 print_supplemental_page_table () {
-  hash_apply (&thread_current ()->sup_pagetable, print_page_entry);
+  hash_apply (&thread_current ()->sup_pagetable, print_page_entry_hf);
 }
 
 void

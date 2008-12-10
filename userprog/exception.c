@@ -152,7 +152,6 @@ page_fault (struct intr_frame *f)
   void * esp;
   uint32_t fault_page;
   struct thread *cur = thread_current();
-
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -180,13 +179,14 @@ page_fault (struct intr_frame *f)
   bool stack_access = is_stack_access(fault_addr, esp);
   if (gen_page == NULL && !stack_access) {
     switch (f->cs) {
-  	case SEL_KCSEG:
-  		f->eip = (void *)f->eax;
-  		f->eax = -1;
+    case SEL_KCSEG:
+      ASSERT(cur->in_syscall && !!"page fault in kernel");
+      f->eip = (void *)f->eax;
+      f->eax = -1;
       return;
-  	default:
-  	  exit (-1);	
-  	}
+    default:
+      exit (-1);	
+    }
   }
   
   /* Get a page of memory. */
@@ -199,14 +199,10 @@ page_fault (struct intr_frame *f)
 
   bool writable = true;
   bool dirty = false;
-  if (gen_page == NULL && stack_access) {
-    frame->type = STACK;
-  }
-  else {
-    frame->type = gen_page->type;
+  if (gen_page != NULL) {
     switch (gen_page->type) {
     case EXEC:
-      user = user; //why is this line needed?  Crazy C syntax
+      noop(); //why is this line needed?  Crazy C syntax
       struct exec_page *exec_page = (struct exec_page*) gen_page;
 
       lock_acquire (&filesys_lock);
@@ -222,10 +218,9 @@ page_fault (struct intr_frame *f)
       lock_release (&filesys_lock);
       memset ((uint8_t *)kpage + exec_page->zero_after, 0, PGSIZE - exec_page->zero_after);
       writable = exec_page->writable;
-//       expire_page (exec_page);
       break;
     case FILE:
-      user = user;
+      noop();
       struct file_page *file_page = (struct file_page*) gen_page;
       lock_acquire (&filesys_lock);
       file_seek (file_page->source_file, file_page->offset);
@@ -242,15 +237,12 @@ page_fault (struct intr_frame *f)
       memset (kpage + file_page->zero_after, 0, PGSIZE - file_page->zero_after);    
       break;
     case SWAP:
-      user = user; // stupid c parser
+      noop();
       struct swap_page *swap_page = (struct swap_page*) gen_page;
-      struct swap_slot *ss;
-      //slot.tid = thread_current ()->tid;
-      ss = swap_page->slot;
+
       dirty = swap_page->dirty;
-      swap_slot_read (kpage, ss);
-      frame->type = swap_page->evicted_page->type;
-    	    
+      swap_slot_read (kpage, swap_page->slot);
+
       //delete swap_page in supplemental table.
       hash_delete (&cur->sup_pagetable, &swap_page->elem);
       if (swap_page->evicted_page != NULL)
@@ -259,12 +251,7 @@ page_fault (struct intr_frame *f)
       break;
     case ZERO:
       memset (kpage, 0, PGSIZE);
-      hash_delete (&cur->sup_pagetable, &gen_page->elem);
-      free (gen_page);
       break;
-    case STACK:
-      printf("Error, nothing to retrieve for a STACK page\n");
-      exit(-1);
     }
   }
 
@@ -273,11 +260,10 @@ page_fault (struct intr_frame *f)
     ft_free_page (kpage);
     exit (-1);
   }
-  
+
   /* Set dirty bit if this frame is dirty before swaping to the swap disk. */
   if (dirty)
 	  pagedir_set_dirty (cur->pagedir, (void *)fault_page, true);
-	  //*frame->PTE |= PTE_D;
   
   frame->virtual_address = (uint32_t *) fault_page;
 }
