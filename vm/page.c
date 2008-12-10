@@ -39,9 +39,9 @@ add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
 
 struct special_page_elem *
 add_lazy_page (struct thread *t, struct special_page_elem *page) {
-  //sema_down (&t->page_sema);
+  sema_down (&t->page_sema);
   struct special_page_elem *results = add_lazy_page_unsafe(t, page);
-  //sema_up (&t->page_sema);
+  sema_up (&t->page_sema);
   return results;
 }
 
@@ -80,9 +80,9 @@ static inline struct special_page_elem *find_lazy_page_unsafe (struct thread *t,
 
 struct special_page_elem *
 find_lazy_page (struct thread *t, uint32_t ptr) {
-  //sema_down (&t->page_sema);
+  sema_down (&t->page_sema);
   struct special_page_elem *result = find_lazy_page_unsafe (t, ptr);
-  //sema_up (&t->page_sema);
+  sema_up (&t->page_sema);
   return result;
 }
 
@@ -178,9 +178,9 @@ static void expire_page_hf (struct hash_elem *element, void *aux UNUSED) {
 
 void
 destroy_supplemental_pagetable (struct thread *t) {
-  //sema_down (&t->page_sema);
+  sema_down (&t->page_sema);
   hash_destroy (&t->sup_pagetable, expire_page_hf);
-  //sema_up (&t->page_sema);
+  sema_up (&t->page_sema);
 }
 
 bool
