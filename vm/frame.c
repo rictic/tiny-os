@@ -32,11 +32,11 @@ ft_get_page (enum palloc_flags flags)
 {
   ASSERT (flags & PAL_USER);
 
+  lock_acquire (&frame_lock);
+
   void *page = palloc_get_page (flags);
   struct frame *f = NULL;
   
-  lock_acquire (&frame_lock);
-
   if (page == NULL)
   {
     page = ft_replacement();

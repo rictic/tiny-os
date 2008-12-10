@@ -180,20 +180,6 @@ page_fault (struct intr_frame *f)
 	  struct list_elem *elem_test;
 	  struct frame *f_test;
 	  
-	  //lock_acquire (&frame_lock);
-
-	  lforeach(elem_test, &frame_list)
-	  {
-		  f_test = list_entry(elem_test, struct frame, ft_elem);
-		  printf("thread id is %d\n", f_test->t->tid);
-		  printf("user_page is 0x%08x\n", f_test->user_page);
-		  printf("PTE is 0x%08x\n", f_test->PTE);
-		  printf("virtual_address is 0x%08x\n", f_test->virtual_address);
-		  printf("loaded is %s\n", f_test->loaded ? "true" : "false");		  
-	  }
-	  
-	  //lock_release (&frame_lock);
-	  
     switch (f->cs) {
     case SEL_KCSEG:
       if (!cur->in_syscall)

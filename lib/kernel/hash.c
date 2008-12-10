@@ -150,6 +150,8 @@ hash_delete (struct hash *h, struct hash_elem *e)
       remove_elem (h, found);
       rehash (h); 
     }
+  else
+    ASSERT(!!"Tried to delete an element that wasn't in the hash\n");
   return found;
 }
 

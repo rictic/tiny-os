@@ -32,6 +32,7 @@ init_supplemental_pagetable (struct thread *t) {
 
 struct special_page_elem *
 add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
+  ASSERT(((unsigned)page & 0xfffff000) != 0xccccc000);
   struct hash_elem *elem = hash_insert (&t->sup_pagetable, &page->elem);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
@@ -39,6 +40,7 @@ add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
 
 struct special_page_elem *
 add_lazy_page (struct thread *t, struct special_page_elem *page) {
+  ASSERT(page != 0xdddddddd);
   sema_down (&t->page_sema);
   struct special_page_elem *results = add_lazy_page_unsafe(t, page);
   sema_up (&t->page_sema);
@@ -71,6 +73,7 @@ new_swap_page (uint32_t virtual_page, struct swap_slot *slot,
 }
 
 static inline struct special_page_elem *find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
+  ASSERT((ptr & 0xfffff000) != 0xccccc000);
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
   struct hash_elem *elem = hash_find (&t->sup_pagetable, &needle.elem);
