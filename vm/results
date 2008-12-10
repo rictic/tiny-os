@@ -1,5 +1,7 @@
-pass tests/filesys/base/syn-remove
+pass tests/filesys/base/sm-seq-random
+pass tests/filesys/base/syn-read
 pass tests/filesys/base/syn-write
+pass tests/filesys/base/syn-remove
 pass tests/userprog/args-none
 pass tests/userprog/args-single
 pass tests/userprog/args-multiple
@@ -44,7 +46,7 @@ pass tests/userprog/write-stdin
 pass tests/userprog/write-bad-fd
 pass tests/userprog/exec-once
 pass tests/userprog/exec-arg
-FAIL tests/userprog/exec-multiple
+pass tests/userprog/exec-multiple
 pass tests/userprog/exec-missing
 pass tests/userprog/exec-bad-ptr
 pass tests/userprog/wait-simple
@@ -71,12 +73,12 @@ pass tests/vm/pt-bad-read
 pass tests/vm/pt-write-code
 pass tests/vm/pt-write-code2
 pass tests/vm/pt-grow-stk-sc
-FAIL tests/vm/page-linear
+pass tests/vm/page-linear
 FAIL tests/vm/page-parallel
-FAIL tests/vm/page-merge-seq
-FAIL tests/vm/page-merge-par
-FAIL tests/vm/page-merge-stk
-FAIL tests/vm/page-merge-mm
+pass tests/vm/page-merge-seq
+pass tests/vm/page-merge-par
+pass tests/vm/page-merge-stk
+pass tests/vm/page-merge-mm
 pass tests/vm/page-shuffle
 pass tests/vm/mmap-read
 pass tests/vm/mmap-close
@@ -84,7 +86,7 @@ pass tests/vm/mmap-unmap
 pass tests/vm/mmap-overlap
 pass tests/vm/mmap-twice
 pass tests/vm/mmap-write
-FAIL tests/vm/mmap-exit
+pass tests/vm/mmap-exit
 pass tests/vm/mmap-shuffle
 pass tests/vm/mmap-bad-fd
 pass tests/vm/mmap-clean
@@ -106,7 +108,7 @@ pass tests/filesys/base/sm-full
 pass tests/filesys/base/sm-random
 pass tests/filesys/base/sm-seq-block
 pass tests/filesys/base/sm-seq-random
-FAIL tests/filesys/base/syn-read
+pass tests/filesys/base/syn-read
 pass tests/filesys/base/syn-remove
 pass tests/filesys/base/syn-write
-9 of 109 tests failed.
+1 of 109 tests failed.

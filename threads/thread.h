@@ -29,6 +29,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+struct list ready_list;
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -117,10 +121,13 @@ struct thread
     void * esp;                         /* The program's stack pointer when 
                                           it entered kernel mode. */
     struct hash sup_pagetable;          /* Supplemental page table */
+    struct semaphore page_sema;         /* For supplemental page table */
 
     struct file *(files[NUM_FD]);       /* File descriptor table */
     
-    //struct semaphore page_sema;         /* Semaphore on children list */
+    bool in_syscall;                    /* Used to have different page_fault behavior
+                                           during a syscall and without it */
+
     
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

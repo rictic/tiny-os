@@ -40,22 +40,19 @@ bool
 swap_slot_read (void *frame, struct swap_slot* ss)
 {
 	off_t pos = 0;
-	bool success = false;
+
+	if (frame == NULL)
+    return false;
+
+	disk_sector_t start = ss->start;
 	
-	if (frame != NULL)
-	{
-		disk_sector_t start = ss->start;
-		
-		/* Read from the swap disk into frame. */
-		for (pos = 0; pos < PGSIZE; pos += DISK_SECTOR_SIZE, start++)
-			disk_read(swap_disk, start, frame + pos);
-		
-		free_swap_slot(ss);
-		
-		success = true;
-	}
+	/* Read from the swap disk into frame. */
+	for (pos = 0; pos < PGSIZE; pos += DISK_SECTOR_SIZE, start++)
+		disk_read(swap_disk, start, frame + pos);
+
+	free_swap_slot(ss);
 	
-	return success;
+	return true;
 }
 
 /* Write one frame of thread t to the swap disk. Return that swap slot if successful. 

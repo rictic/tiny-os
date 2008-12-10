@@ -529,14 +529,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-    struct exec_page *exec_page = malloc (sizeof (struct exec_page));
-    exec_page->type = EXEC;
-    exec_page->virtual_page = (uint32_t)upage;
-    exec_page->elf_file = file;
-    exec_page->offset = ofs;
-    exec_page->zero_after = page_read_bytes;
-    exec_page->writable = writable;
-    add_lazy_page (thread_current(), (struct special_page_elem*)exec_page);
+    struct special_page_elem *gen_page;
+    if (page_read_bytes == 0)
+      gen_page = (struct special_page_elem*)new_zero_page ((uint32_t)upage);
+    else
+      gen_page = (struct special_page_elem*) 
+                  new_exec_page ((uint32_t)upage, file, ofs, page_read_bytes, writable);
+    add_lazy_page (thread_current (), gen_page);
     
     /* Advance. */
     read_bytes -= page_read_bytes;
@@ -554,16 +553,19 @@ static bool
 setup_stack (void **esp) 
 {
   struct frame *frame = ft_get_page (PAL_USER | PAL_ZERO); 
-  frame->type = NORMAL;
   if (frame == NULL)
     return false;
-  
-  if (!install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame, true)){
+  uint8_t *stack_begin = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  lock_acquire (&frame_lock);
+  if (!install_page (stack_begin, frame, true)){
+	  lock_release (&frame_lock);
 	  ft_free_page (frame->user_page);
     return false;
   }
   *esp = PHYS_BASE;
-  frame->virtual_address = (uint32_t)(((uint8_t *) PHYS_BASE) - PGSIZE);  
+  frame->virtual_address = (uint32_t *)stack_begin;
+  frame->loaded = true;
+  lock_release (&frame_lock);
 
   return true;
 }
