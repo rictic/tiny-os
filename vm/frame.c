@@ -35,6 +35,8 @@ ft_get_page (enum palloc_flags flags)
   void *page = palloc_get_page (flags);
   struct frame *f = NULL;
   
+  lock_acquire (&frame_lock);
+
   if (page == NULL)
   {
     page = ft_replacement();
@@ -53,7 +55,6 @@ ft_get_page (enum palloc_flags flags)
   f->loaded = false;
   //*f->PTE &= ~(uint32_t) PTE_A; 
   
-  lock_acquire (&frame_lock);
   list_push_back(&frame_list, &f->ft_elem);
   lock_release (&frame_lock);
   
@@ -154,7 +155,7 @@ static void *
 ft_replacement (void)
 {
   ASSERT (!list_empty(&frame_list));
-  lock_acquire (&frame_lock);
+  //lock_acquire (&frame_lock);
   enum intr_level old_level = intr_disable ();
   struct frame *f = get_frame_for_replacement ();
   void * kpage = f->user_page;
@@ -209,7 +210,7 @@ ft_replacement (void)
   f->virtual_address = NULL;
   f->loaded = false;*/
 
-  lock_release (&frame_lock);
+  //lock_release (&frame_lock);
 
   return kpage;
 }
