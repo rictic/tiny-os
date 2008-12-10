@@ -65,6 +65,7 @@ struct special_page_elem * find_lazy_page (struct thread *t, uint32_t ptr);
 bool validate_free_page (void *upage, uint32_t read_bytes);
 void expire_page (struct special_page_elem * gen_page);
 void print_supplemental_page_table (void);
+void print_page_entry (struct special_page_elem *gen_page);
 struct zero_page *new_zero_page (uint32_t);
 struct exec_page *new_exec_page (uint32_t, struct file *, size_t, size_t, bool);
 struct swap_page *new_swap_page (uint32_t, struct swap_slot *, bool, struct special_page_elem *);

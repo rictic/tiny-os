@@ -10,6 +10,7 @@
 
 RR
 Lihuan Xie <email@domain.example>
+>>>>>>> riku:vm/DESIGNDOC
 Peter Burns <rictic@gmail.com>
 
 ---- PRELIMINARIES ----
@@ -29,6 +30,7 @@ Peter Burns <rictic@gmail.com>
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
 
 TODO RIKU
 

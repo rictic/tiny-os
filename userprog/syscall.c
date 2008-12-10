@@ -252,7 +252,6 @@ static int mmap (int fd, void *addr)
     addr += PGSIZE;
   }
 
-  file_seek (file, ofs);
   lock_release (&filesys_lock);
   return mapping;
 }
