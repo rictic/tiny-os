@@ -1,6 +1,7 @@
 #include <debug.h>
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/interrupt.h"
 #include "page.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
@@ -193,6 +194,8 @@ validate_free_page (void *upage, uint32_t read_bytes)
 	unsigned i;
 	uint32_t ptr = (uint32_t)upage;
 	struct special_page_elem *spe;
+	enum intr_level old_level = intr_disable ();
+
 	for(i = 0; i < num_of_pages; i++, ptr += PGSIZE)
 	{
 		spe = find_lazy_page(thread_current (), ptr);
@@ -200,5 +203,7 @@ validate_free_page (void *upage, uint32_t read_bytes)
 			return false; // This page has been already mapped.
 	}
 	
+	intr_set_level (old_level);
+
 	return true;
 }

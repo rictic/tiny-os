@@ -32,11 +32,11 @@ ft_get_page (enum palloc_flags flags)
 {
   ASSERT (flags & PAL_USER);
 
+  lock_acquire (&frame_lock);
+
   void *page = palloc_get_page (flags);
   struct frame *f = NULL;
   
-  lock_acquire (&frame_lock);
-
   if (page == NULL)
   {
     page = ft_replacement();
@@ -98,7 +98,7 @@ ft_free_page (void *page)
 void
 ft_destroy (struct thread *t)
 {
-  lock_acquire (&frame_lock);
+  //lock_acquire (&frame_lock);
 
   struct list_elem *elem = list_begin(&frame_list);
 
@@ -122,7 +122,7 @@ ft_destroy (struct thread *t)
       elem = list_next(elem);
   }
   
-  lock_release (&frame_lock);
+  //lock_release (&frame_lock);
 }
 
 static struct frame *

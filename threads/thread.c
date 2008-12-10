@@ -357,8 +357,6 @@ thread_exit (void)
     lock_release (&t->parent->children_lock);
   }
 
-  destroy_supplemental_pagetable (t);
-
 #ifdef USERPROG
   process_exit ();
 #endif
