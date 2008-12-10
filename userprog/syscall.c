@@ -237,14 +237,8 @@ static int mmap (int fd, void *addr)
     and zero the rest of the page. */
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     
-    struct file_page *file_page = malloc (sizeof (struct file_page));
-    
-    file_page->type = FILE;
-    file_page->virtual_page = (uint32_t)addr;
-    file_page->source_file = file;
-    file_page->offset = ofs;
-    file_page->zero_after = page_read_bytes;
-    add_lazy_page (thread_current(), (struct special_page_elem*)file_page);
+    add_lazy_page (thread_current(), (struct special_page_elem*)
+                      new_file_page(addr, file, ofs, page_read_bytes));
 
     /* Advance. */
     read_bytes -= page_read_bytes;

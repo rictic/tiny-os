@@ -72,6 +72,15 @@ new_swap_page (uint32_t virtual_page, struct swap_slot *slot,
   return sp;
 }
 
+struct file_page *
+new_file_page (uint32_t virtual_page, struct file *elf_file, 
+               size_t offset, size_t zero_after) {
+  struct file_page *fp = malloc (sizeof (struct file_page));
+  fp->type = FILE; fp->virtual_page = virtual_page; fp->source_file = elf_file;
+  fp->offset = offset; fp->zero_after = zero_after;
+  return fp;
+}
+
 static struct special_page_elem *find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
   ASSERT((ptr & 0xfffff000) != 0xccccc000);
   struct special_page_elem needle;

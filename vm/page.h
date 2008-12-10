@@ -68,6 +68,7 @@ void print_supplemental_page_table (void);
 void print_page_entry (struct special_page_elem *gen_page);
 struct zero_page *new_zero_page (uint32_t);
 struct exec_page *new_exec_page (uint32_t, struct file *, size_t, size_t, bool);
+struct file_page *new_file_page (uint32_t, struct file *, size_t, size_t);
 struct swap_page *new_swap_page (uint32_t, struct swap_slot *, bool, struct special_page_elem *);
 
 static void noop (void);

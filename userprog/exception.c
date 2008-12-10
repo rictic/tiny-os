@@ -175,7 +175,6 @@ page_fault (struct intr_frame *f)
 
   bool stack_access = is_stack_access(fault_addr, esp);
   if (gen_page == NULL && !stack_access) {
-	printf("fail here...%08x\n", fault_addr);
   
 	  struct list_elem *elem_test;
 	  struct frame *f_test;
