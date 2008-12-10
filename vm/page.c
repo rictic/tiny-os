@@ -29,12 +29,18 @@ init_supplemental_pagetable (struct thread *t) {
 }
 
 struct special_page_elem *
-add_lazy_page (struct thread *t, struct special_page_elem *page) {
-  sema_down (&t->page_sema);
+add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
   struct hash_elem *elem = hash_insert (&t->sup_pagetable, &page->elem);
-  sema_up (&t->page_sema);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
+}
+
+struct special_page_elem *
+add_lazy_page (struct thread *t, struct special_page_elem *page) {
+  sema_down (&t->page_sema);
+  struct special_page_elem *results = add_lazy_page_unsafe(t, page);
+  sema_up (&t->page_sema);
+  return results;
 }
 
 struct zero_page *
@@ -53,13 +59,29 @@ new_exec_page (uint32_t virtual_page, struct file *elf_file,
   return ep;
 }
 
+struct swap_page *
+new_swap_page (uint32_t virtual_page, struct swap_slot *slot, 
+               bool dirty, struct special_page_elem *evicted_page){
+  struct swap_page *sp = malloc (sizeof (struct swap_page));
+  sp->type = SWAP; sp->virtual_page = virtual_page; sp->slot = slot;
+  sp->dirty = dirty; sp->evicted_page = evicted_page;
+  return sp;
+}
+
+
 struct special_page_elem *
 find_lazy_page (struct thread *t, uint32_t ptr) {
+  sema_down (&t->page_sema);
+  struct special_page_elem * result = find_lazy_page_unsafe (t, ptr);
+  sema_up (&t->page_sema);
+  return result;
+}
+
+struct special_page_elem *
+find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
-  sema_down (&t->page_sema);
   struct hash_elem *elem = hash_find (&t->sup_pagetable, &needle.elem);
-  sema_up (&t->page_sema);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
 }

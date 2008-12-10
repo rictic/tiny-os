@@ -261,19 +261,15 @@ static int mmap (int fd, void *addr)
 static void munmap (int mapping)
 {
   if ((mapping & 0x00000fff) != 0
-	 || mapping >= STACK_BOTTOM)
+	 || mapping >= (int)STACK_BOTTOM)
     return;
 
   struct file_page *file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
   if (file_page == NULL)
     return;
-
-  struct file *file = file_page->source_file;
-  void * addr = (void *)mapping;
-
   
   lock_acquire (&filesys_lock);
-  uint32_t read_bytes = file_length(file);
+  uint32_t read_bytes = file_length(file_page->source_file);
   lock_release (&filesys_lock);
   
   if (read_bytes == 0)
@@ -287,11 +283,11 @@ static void munmap (int mapping)
   unsigned i;
   for(i = 0; i < num_of_pages; i++) {
     expire_page ((struct special_page_elem *) file_page);
-    addr += PGSIZE;
-    file_page = (struct file_page*) find_lazy_page(thread_current (), (int)addr);
+    mapping += PGSIZE;
+    file_page = (struct file_page*) find_lazy_page(thread_current (), mapping);
   }
   lock_acquire (&filesys_lock);
-  file_close (file);
+  file_close (file_page->source_file);
   lock_release (&filesys_lock);
 }
 

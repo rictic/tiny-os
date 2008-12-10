@@ -249,14 +249,12 @@ page_fault (struct intr_frame *f)
       ss = swap_page->slot;
       dirty = swap_page->dirty;
       swap_slot_read (kpage, ss);
-      frame->type = swap_page->type_before;
-    
-      if (swap_page->type_before == EXEC)
-        frame->type = ZERO;
-		  //add_lazy_page (cur, (struct special_page_elem*)swap_page->exec);
-	    
+      frame->type = swap_page->evicted_page->type;
+    	    
       //delete swap_page in supplemental table.
       hash_delete (&cur->sup_pagetable, &swap_page->elem);
+      if (swap_page->evicted_page != NULL)
+        add_lazy_page (thread_current (), swap_page->evicted_page);
       free(swap_page);
       break;
     case ZERO:

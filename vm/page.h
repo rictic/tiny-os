@@ -49,10 +49,8 @@ struct swap_page {
   struct hash_elem elem;
   uint32_t virtual_page;
   struct swap_slot *slot;
-  //disk_sector_t sector; //sector where the disk starts
   bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
-  enum special_page type_before; //page type before swaping
-  //struct exec_page *exec;
+  struct special_page_elem *evicted_page; //the evicted page before swaping
 };
 
 struct zero_page {
@@ -70,6 +68,7 @@ void expire_page (struct special_page_elem * gen_page);
 void print_supplemental_page_table (void);
 struct zero_page *new_zero_page (uint32_t);
 struct exec_page *new_exec_page (uint32_t, struct file *, size_t, size_t, bool);
+struct swap_page *new_swap_page (uint32_t, struct swap_slot *, bool, struct special_page_elem *);
 
 static void noop (void);
 static inline void noop() {}
