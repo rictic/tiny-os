@@ -9,6 +9,8 @@
 #include "threads/malloc.h"
 #include <stdio.h>
 
+//static inline struct special_page_elem *add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page);
+
 static unsigned
 page_hash (const struct hash_elem *element, void *aux UNUSED) {
   struct special_page_elem *page = hash_entry (element, struct special_page_elem, elem);
@@ -37,9 +39,9 @@ add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
 
 struct special_page_elem *
 add_lazy_page (struct thread *t, struct special_page_elem *page) {
-  sema_down (&t->page_sema);
+  //sema_down (&t->page_sema);
   struct special_page_elem *results = add_lazy_page_unsafe(t, page);
-  sema_up (&t->page_sema);
+  //sema_up (&t->page_sema);
   return results;
 }
 
@@ -68,22 +70,20 @@ new_swap_page (uint32_t virtual_page, struct swap_slot *slot,
   return sp;
 }
 
-
-struct special_page_elem *
-find_lazy_page (struct thread *t, uint32_t ptr) {
-  sema_down (&t->page_sema);
-  struct special_page_elem * result = find_lazy_page_unsafe (t, ptr);
-  sema_up (&t->page_sema);
-  return result;
-}
-
-struct special_page_elem *
-find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
+static inline struct special_page_elem *find_lazy_page_unsafe (struct thread *t, uint32_t ptr) {
   struct special_page_elem needle;
   needle.virtual_page = 0xfffff000 & ptr;
   struct hash_elem *elem = hash_find (&t->sup_pagetable, &needle.elem);
   if (elem == NULL) return NULL;
   return hash_entry(elem, struct special_page_elem, elem);
+}
+
+struct special_page_elem *
+find_lazy_page (struct thread *t, uint32_t ptr) {
+  //sema_down (&t->page_sema);
+  struct special_page_elem *result = find_lazy_page_unsafe (t, ptr);
+  //sema_up (&t->page_sema);
+  return result;
 }
 
 static inline void print_file(struct file *file) {
@@ -178,9 +178,9 @@ static void expire_page_hf (struct hash_elem *element, void *aux UNUSED) {
 
 void
 destroy_supplemental_pagetable (struct thread *t) {
-  sema_down (&t->page_sema);
+  //sema_down (&t->page_sema);
   hash_destroy (&t->sup_pagetable, expire_page_hf);
-  sema_up (&t->page_sema);
+  //sema_up (&t->page_sema);
 }
 
 bool

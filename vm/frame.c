@@ -139,16 +139,21 @@ static struct frame *
 ft_replacement (void)
 {
   ASSERT (!list_empty(&frame_list));
-  struct frame *f = get_frame_for_replacement ();
   enum intr_level old_level = intr_disable ();
+  struct frame *f = get_frame_for_replacement ();
+  
+  if (&f->t->status == THREAD_BLOCKED || &f->t->status == THREAD_READY)
+	  list_remove(&f->t->elem);
+  
   struct special_page_elem *evicted_page = find_lazy_page(f->t, (uint32_t)f->virtual_address);
-  pagedir_clear_page(f->t->pagedir, f->virtual_address);
-
-  sema_down(&f->t->page_sema);
-  intr_set_level (old_level);
-    
   bool dirty = (*f->PTE) & PTE_D;
 
+  pagedir_clear_page(f->t->pagedir, f->virtual_address);
+
+  //sema_down(&f->t->page_sema);
+
+  intr_set_level (old_level);
+    
   if (dirty) {
     if (evicted_page != NULL && evicted_page->type == FILE){
       struct file_page *file_page = (struct file_page*) evicted_page;
@@ -165,7 +170,9 @@ ft_replacement (void)
     }
   }
   
-  sema_up (&f->t->page_sema);
+  //sema_up (&f->t->page_sema);
+  if (&f->t->status == THREAD_BLOCKED || &f->t->status == THREAD_READY)
+	    list_push_back (&ready_list, &f->t->elem);
   
   lock_acquire (&frame_lock);
   hand = list_next(hand);
