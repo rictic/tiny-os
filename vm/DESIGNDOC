@@ -9,6 +9,7 @@
 >> Fill in the names and email addresses of your group members.
 
 RR
+
 Lihuan Xie <lxie@cs.usfca.edu>
 Peter Burns <rictic@gmail.com>
 
@@ -96,7 +97,87 @@ We had enough trouble with just a list for our initial implementation though.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-TODO PETER--------------
+struct thread {
+    <...>
+    void * esp;                         /* The program's stack pointer when 
+                                          it entered kernel mode. */
+    struct hash sup_pagetable;          /* Supplemental page table */
+    struct semaphore page_sema;         /* For supplemental page table */
+
+    bool in_syscall;                    /* Used to have different page_fault behavior
+                                           during a syscall */
+
+}
+
+#define MAX_STACK_SIZE 2000 //in pages
+#define STACK_BOTTOM PHYS_BASE - (PGSIZE * MAX_STACK_SIZE)
+
+enum special_page {
+  EXEC,
+  FILE,
+  SWAP,
+  ZERO
+};
+
+  
+//this just defines the common elements which all supplemental
+// page table entries share
+struct special_page_elem {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+};
+
+
+struct exec_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct file *elf_file;
+  size_t offset; //number of bytes into the file to start
+  size_t zero_after; //after this offset, the rest should be zeros
+  bool writable;
+};
+
+struct file_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct file *source_file;
+  size_t offset; //number of pages into the file
+  size_t zero_after; //after this offset, the rest should be zeros
+};
+
+struct swap_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+  struct swap_slot *slot; //slot in the swap partition
+  bool dirty; //Whether the page before evicting to SWAP is dirty or not. 
+  struct special_page_elem *evicted_page; //the evicted page before swaping
+};
+
+struct zero_page {
+  enum special_page type;
+  struct hash_elem elem;
+  uint32_t virtual_page;
+};
+
+
+#define SECTORS_PER_FRAME 8
+struct swap_slot
+{
+    disk_sector_t start;                /* First data sector of the swap slot. */
+};
+
+
+struct free_swap_slot
+{
+    disk_sector_t start;                /* First data sector of the free swap slot. */
+    size_t size;                        /* Size of this free slot in sectors. */
+    struct list_elem free_swap_elem;    /* List free swap element. */
+};
+
 
 ---- ALGORITHMS ----
 
@@ -135,7 +216,9 @@ in our frame replacement code, because it's the only code that deals with
 multiple locks at once.  Our other code takes pains to only hold a single
 lock at once, and as briefly as possible.
 
-TODO PETER------
+However, this doesn't really work all that well.  We've got some subtle
+synchronization bugs, and while we don't seem to have any deadlocks,
+I wouldn't bet money on it.
 
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
