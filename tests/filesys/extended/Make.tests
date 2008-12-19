@@ -20,7 +20,7 @@ $(foreach prog,$(tests/filesys/extended_TESTS),		\
 	$(eval $(prog)_PUTFILES += tests/filesys/extended/tar))
 # The version of GNU make 3.80 on vine barfs if this is split at
 # the last comma.
-$(foreach test,$(tests/filesys/extended_TESTS),$(eval $(test).output: FSDISK = tmp.dsk))
+$(foreach test,$(tests/filesys/extended_TESTS),$(eval $(test).output: FSDISK = $(test).dsk))
 
 tests/filesys/extended/dir-mk-tree_SRC += tests/filesys/extended/mk-tree.c
 tests/filesys/extended/dir-rm-tree_SRC += tests/filesys/extended/mk-tree.c
@@ -46,11 +46,11 @@ GETCMD += < /dev/null
 GETCMD += 2> $(TEST)-persistence.errors $(if $(VERBOSE),|tee,>) $(TEST)-persistence.output
 
 tests/filesys/extended/%.output: os.dsk
-	rm -f tmp.dsk
-	pintos-mkdisk tmp.dsk 2
+	rm -f `echo $@|sed s/\.output$///g`.dsk
+	pintos-mkdisk `echo $@|sed s/\.output$///g`.dsk 2
 	$(TESTCMD)
 	$(GETCMD)
-	rm -f tmp.dsk
+	rm -f `echo $@|sed s/\.output$///g`.dsk
 $(foreach raw_test,$(raw_tests),$(eval tests/filesys/extended/$(raw_test)-persistence.output: tests/filesys/extended/$(raw_test).output))
 $(foreach raw_test,$(raw_tests),$(eval tests/filesys/extended/$(raw_test)-persistence.result: tests/filesys/extended/$(raw_test).result))
 

@@ -588,6 +588,10 @@ sub pass {
 sub finish {
     my ($verdict, @messages) = @_;
 
+    if (!$msg_file) {
+        print STDOUT "FAIL $test\n";
+        exit 0;
+    }
     seek ($msg_file, 0, 0);
     push (@messages, <$msg_file>);
     close ($msg_file);
