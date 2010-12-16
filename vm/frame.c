@@ -11,20 +11,11 @@
 //static struct list frame_list;
 
 /* A frame structure pointer, named hand, for pointing a frame to evict. */
-static struct list_elem *hand;
+extern struct list_elem *hand;
 
 static void *ft_replacement (void);
 static inline void check_and_set_hand (void);
 
-/* Initialize the frame table. */
-void
-ft_init (void) 
-{
-  list_init (&frame_list);
-  lock_init (&frame_lock);
-  
-  hand = &frame_list.head;
-}
 
 /* Get a user page from user pool, and add to our frame table if successful. */
 struct frame *

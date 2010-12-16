@@ -13,19 +13,15 @@
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 
-#define fdtable thread_current ()->files
-inline static struct file* get_file(int fd) {
-  if ((fd < 0) || (fd >= NUM_FD)) exit(-1);
-  return fdtable[fd];
-}
-
-
 
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void validate_read (const char *buffer, unsigned size);
 static void validate_write (char *from, char *user_to, unsigned size, bool malloc_buffer);
 static void validate_string (const char *string);
+extern void close (int fd);
+extern struct file* get_file(int fd);
+extern void exit (int status);
 
 /* Terminates Pintos by calling power_off() (declared in "threads/init.h"). 
  This should be seldom used, because you lose some information about possible
@@ -34,17 +30,6 @@ static void halt (void) {
   power_off ();
 }
 
-/* Terminates the current user program, returning status to the kernel. If 
-  the process's parent waits for it (see below), this is the status that 
-  will be returned. Conventionally, a status of 0 indicates success and 
-  nonzero values indicate errors. */
-void exit (int status) {
-  struct thread *t = thread_current ();
-  t->exit_code = status;
-  printf("%s: exit(%d)\n", t->name, status);
-  thread_exit ();
-  NOT_REACHED ();
-}
 
 /* Runs the executable whose name is given in cmd_line, passing any 
   given arguments, and returns the new process's program id (pid).
@@ -186,19 +171,6 @@ static int filesize (int fd){
   result = file_length (f);
   lock_release (&filesys_lock);
   return result;
-}
-
-/* Closes file descriptor fd. Exiting or terminating a process implicitly 
-  closes all its open file descriptors, as if by calling this function 
-  for each one. */
-void close (int fd){
-  struct file *file = get_file (fd);
-  if (fd < 2) return;
-  if (file == NULL) return;
-  lock_acquire (&filesys_lock);
-  file_close (file);
-  lock_release (&filesys_lock);
-  fdtable[fd] = NULL;
 }
 
 /* Mapping the file in fd file descriptor to virtual address addr.

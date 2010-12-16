@@ -10,25 +10,12 @@
 #include <stdio.h>
 
 //static inline struct special_page_elem *add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page);
-
-static unsigned
-page_hash (const struct hash_elem *element, void *aux UNUSED) {
-  struct special_page_elem *page = hash_entry (element, struct special_page_elem, elem);
-  return hash_bytes (&page->virtual_page, sizeof (page->virtual_page));
-}
-
-static bool
-page_key_less (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED) {
-  struct special_page_elem *pa = hash_entry (a, struct special_page_elem, elem);
-  struct special_page_elem *pb = hash_entry (b, struct special_page_elem, elem);
-  return pa->virtual_page < pb->virtual_page;
-}
-
-void
-init_supplemental_pagetable (struct thread *t) {
-  hash_init (&t->sup_pagetable, page_hash, page_key_less, NULL);
-  sema_init (&t->page_sema, 1);
-}
+extern void init_supplemental_pagetable (struct thread *t);
+extern unsigned page_hash (const struct hash_elem *element, void *aux UNUSED);
+extern bool page_key_less (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED);
+extern void expire_page (struct special_page_elem * gen_page);
+extern void expire_page_hf (struct hash_elem *element, void *aux UNUSED);
+extern void destroy_supplemental_pagetable (struct thread *t);
 
 struct special_page_elem *
 add_lazy_page_unsafe (struct thread *t, struct special_page_elem *page) {
@@ -159,40 +146,6 @@ print_supplemental_page_table () {
   hash_apply (&thread_current ()->sup_pagetable, print_page_entry_hf);
 }
 
-void
-expire_page (struct special_page_elem * gen_page) {
-  struct thread *cur = thread_current ();
-  void *kpage = pagedir_get_page (cur->pagedir, (void *)gen_page->virtual_page);
-  if (kpage != NULL){
-    switch(gen_page->type) {
-    case FILE:
-      noop ();
-      struct file_page *file_page = (struct file_page *)gen_page;
-      if (pagedir_is_dirty (cur->pagedir, (void *)file_page->virtual_page)) {
-        lock_acquire (&filesys_lock);
-        file_write_at (file_page->source_file, (void *)file_page->virtual_page, 
-                       file_page->zero_after, file_page->offset);
-        lock_release (&filesys_lock);
-      }
-      break;
-    default:
-      break;
-    }
-  }
-  hash_delete (&cur->sup_pagetable, &gen_page->elem);
-  free(gen_page);
-}
-
-static void expire_page_hf (struct hash_elem *element, void *aux UNUSED) {
-  expire_page (hash_entry (element, struct special_page_elem, elem));
-}
-
-void
-destroy_supplemental_pagetable (struct thread *t) {
-  sema_down (&t->page_sema);
-  hash_destroy (&t->sup_pagetable, expire_page_hf);
-  sema_up (&t->page_sema);
-}
 
 bool
 validate_free_page (void *upage, uint32_t read_bytes)

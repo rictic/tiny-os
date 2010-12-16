@@ -7,4 +7,6 @@ void syscall_init (void);
 void exit (int);
 void close (int);
 
+#define fdtable thread_current ()->files
+
 #endif /* userprog/syscall.h */

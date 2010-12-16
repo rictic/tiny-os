@@ -5,8 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 
-static struct file *free_map_file;   /* Free map file. */
-static struct bitmap *free_map;      /* Free map, one bit per disk sector. */
+extern void free_map_release (disk_sector_t sector, size_t cnt);
 
 /* Initializes the free map. */
 void
@@ -37,15 +36,6 @@ free_map_allocate (size_t cnt, disk_sector_t *sectorp)
   if (sector != BITMAP_ERROR)
     *sectorp = sector;
   return sector != BITMAP_ERROR;
-}
-
-/* Makes CNT sectors starting at SECTOR available for use. */
-void
-free_map_release (disk_sector_t sector, size_t cnt)
-{
-  ASSERT (bitmap_all (free_map, sector, cnt));
-  bitmap_set_multiple (free_map, sector, cnt, false);
-  bitmap_write (free_map, free_map_file);
 }
 
 /* Opens the free map file and reads it from disk. */

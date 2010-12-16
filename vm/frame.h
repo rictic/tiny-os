@@ -23,9 +23,9 @@ struct frame {
   bool loaded;
 };
 
-void ft_init (void);
 struct frame *ft_get_page (enum palloc_flags);
 void ft_free_page (void *);
 void ft_destroy (struct thread *);
+void ft_init (void);
 
 #endif /*VM_FRAME_H_*/

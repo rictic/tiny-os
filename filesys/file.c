@@ -2,6 +2,8 @@
 #include <debug.h>
 #include "threads/malloc.h"
 
+extern void file_close (struct file *file);
+extern void file_allow_write (struct file *file);
 
 /* Opens a file for the given INODE, of which it takes ownership,
    and returns the new file.  Returns a null pointer if an
@@ -33,17 +35,6 @@ file_reopen (struct file *file)
   return file_open (inode_reopen (file->inode));
 }
 
-/* Closes FILE. */
-void
-file_close (struct file *file) 
-{
-  if (file != NULL)
-    {
-      file_allow_write (file);
-      inode_close (file->inode);
-      free (file); 
-    }
-}
 
 /* Returns the inode encapsulated by FILE. */
 struct inode *
@@ -91,20 +82,6 @@ file_write (struct file *file, const void *buffer, off_t size)
   return bytes_written;
 }
 
-/* Writes SIZE bytes from BUFFER into FILE,
-   starting at offset FILE_OFS in the file.
-   Returns the number of bytes actually written,
-   which may be less than SIZE if end of file is reached.
-   (Normally we'd grow the file in that case, but file growth is
-   not yet implemented.)
-   The file's current position is unaffected. */
-off_t
-file_write_at (struct file *file, const void *buffer, off_t size,
-               off_t file_ofs) 
-{
-  return inode_write_at (file->inode, buffer, size, file_ofs);
-}
-
 /* Prevents write operations on FILE's underlying inode
    until file_allow_write() is called or FILE is closed. */
 void
@@ -115,20 +92,6 @@ file_deny_write (struct file *file)
     {
       file->deny_write = true;
       inode_deny_write (file->inode);
-    }
-}
-
-/* Re-enables write operations on FILE's underlying inode.
-   (Writes might still be denied by some other file that has the
-   same inode open.) */
-void
-file_allow_write (struct file *file) 
-{
-  ASSERT (file != NULL);
-  if (file->deny_write) 
-    {
-      file->deny_write = false;
-      inode_allow_write (file->inode);
     }
 }
 
