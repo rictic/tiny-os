@@ -9,7 +9,7 @@
 #include "devices/disk.h"
 
 /* The disk that contains the file system. */
-struct disk *filesys_disk;
+extern struct disk *filesys_disk;
 
 static void do_format (void);
 

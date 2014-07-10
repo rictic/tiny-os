@@ -7,28 +7,10 @@
 #ifdef FILESYS
 #include "filesys/file.h"
 #endif
-
-/* Element type.
 
-   This must be an unsigned integer type at least as wide as int.
-
-   Each bit represents one bit in the bitmap.
-   If bit 0 in an element represents bit K in the bitmap,
-   then bit 1 in the element represents bit K+1 in the bitmap,
-   and so on. */
-typedef unsigned long elem_type;
-
-/* Number of bits in an element. */
-#define ELEM_BITS (sizeof (elem_type) * CHAR_BIT)
-
-/* From the outside, a bitmap is an array of bits.  From the
-   inside, it's an array of elem_type (defined above) that
-   simulates an array of bits. */
-struct bitmap
-  {
-    size_t bit_cnt;     /* Number of bits. */
-    elem_type *bits;    /* Elements that represent bits. */
-  };
+extern bool bitmap_write (const struct bitmap *b, struct file *file);
+extern size_t byte_cnt (size_t bit_cnt);
+extern size_t elem_cnt (size_t bit_cnt);
 
 /* Returns the index of the element that contains the bit
    numbered BIT_IDX. */
@@ -46,19 +28,7 @@ bit_mask (size_t bit_idx)
   return (elem_type) 1 << (bit_idx % ELEM_BITS);
 }
 
-/* Returns the number of elements required for BIT_CNT bits. */
-static inline size_t
-elem_cnt (size_t bit_cnt)
-{
-  return DIV_ROUND_UP (bit_cnt, ELEM_BITS);
-}
 
-/* Returns the number of bytes required for BIT_CNT bits. */
-static inline size_t
-byte_cnt (size_t bit_cnt)
-{
-  return sizeof (elem_type) * elem_cnt (bit_cnt);
-}
 
 /* Returns a bit mask in which the bits actually used in the last
    element of B's bits are set to 1 and the rest are set to 0. */
@@ -351,14 +321,6 @@ bitmap_read (struct bitmap *b, struct file *file)
   return success;
 }
 
-/* Writes B to FILE.  Return true if successful, false
-   otherwise. */
-bool
-bitmap_write (const struct bitmap *b, struct file *file)
-{
-  off_t size = byte_cnt (b->bit_cnt);
-  return file_write_at (file, b->bits, size, 0) == size;
-}
 #endif /* FILESYS */
 
 /* Debugging. */

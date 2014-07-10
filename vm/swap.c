@@ -5,35 +5,18 @@
 #include "devices/disk.h"
 
 /* List of free swap slots. */
-static struct list free_swap_list;
+extern struct list free_swap_list;
 
 /* Lock for the swap table. */
-static struct lock swap_lock;
+extern struct lock swap_lock;
 
 /* The disk that contains the file system. */
-static struct disk *swap_disk;
+extern struct disk *swap_disk;
 
 static disk_sector_t alloc_swap_slot (void);
 static void free_swap_slot (struct swap_slot *ss);
-static bool swap_slot_less(struct list_elem *a, struct list_elem *b, void *aux);
+extern bool swap_slot_less(struct list_elem *a, struct list_elem *b, void *aux);
 
-/* Initialize the swap table. */
-void
-swap_init (void) 
-{
-  list_init (&free_swap_list);
-  lock_init (&swap_lock);
-  
-  swap_disk = disk_get (1, 1);
-  
-  struct free_swap_slot *free_ss = malloc (sizeof (struct free_swap_slot));
-  free_ss->start = 0;
-  free_ss->size = disk_size(swap_disk);
-
-  lock_acquire (&swap_lock);
-  list_insert_ordered(&free_swap_list, &free_ss->free_swap_elem, (list_less_func *)swap_slot_less, NULL);
-  lock_release (&swap_lock);
-}
 
 /* Read the swap slot into the frame and return true if successful. */
 bool
@@ -167,17 +150,3 @@ free_swap_slot (struct swap_slot *ss)
 	  free(ss);
 }
 
-/* swap slot comparison function */
-static bool swap_slot_less(struct list_elem *a, struct list_elem *b, void *aux UNUSED)
-{
-    bool rv = false;
-    struct free_swap_slot *fss_a, *fss_b;
-    fss_a = list_entry(a, struct free_swap_slot, free_swap_elem);
-    fss_b = list_entry(b, struct free_swap_slot, free_swap_elem);    
-    
-    if (fss_a->start < fss_b->start) 
-    {
-        rv = true;
-    }
-    return rv;
-}
